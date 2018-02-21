@@ -13,14 +13,11 @@ OBS_MODULE_USE_DEFAULT_LOCALE("text-pango", "en-US")
 #define DEFAULT_FACE "Arial"
 #elif __APPLE__
 #define DEFAULT_FACE "Helvetica"
+#elif __linux__
+#define DEFAULT_FACE "DejaVu Sans"
 #else
 #define DEFAULT_FACE "Sans Serif"
 #endif
-
-#define max(a, b) \
-  ({ __typeof__ (a) _a = (a); \
-      __typeof__ (b) _b = (b); \
-    _a > _b ? _a : _b; })
 
 cairo_t *create_layout_context()
 {
@@ -85,9 +82,9 @@ cairo_t *create_cairo_context(struct pango_source *src,
 }
 
 #define RGBA_CAIRO(c) \
-	((c & 0xff0000) >> 16) / 256.0, \
-	((c & 0xff00) >> 8) / 256.0, \
 	 (c & 0xff) / 256.0, \
+	((c & 0xff00) >> 8) / 256.0, \
+	((c & 0xff0000) >> 16) / 256.0, \
 	((c & 0xff000000) >> 24) / 256.0
 
 void render_text(struct pango_source *src)
@@ -181,35 +178,29 @@ void render_text(struct pango_source *src)
 
 		/* Draw the drop shadow */
 		if (drop_shadow_offset > 0) {
-			cairo_push_group(render_context);
-
 			cairo_move_to(render_context,
 					xpos + drop_shadow_offset,
 					ypos + drop_shadow_offset);
-			pango_cairo_layout_line_path(render_context, line);
 			cairo_set_source_rgba(render_context,
 					RGBA_CAIRO(src->drop_shadow_color));
-			cairo_fill(render_context);
-
-			cairo_pop_group_to_source(render_context);
-			cairo_paint(render_context);
+			pango_cairo_show_layout_line(render_context, line);
 		}
 
+		// cairo_push_group(render_context);
+
 		/* Draw text with outline */
-		cairo_push_group(render_context);
-		cairo_set_operator(render_context, CAIRO_OPERATOR_SOURCE);
-
-		cairo_move_to(render_context, xpos, ypos);
-		pango_cairo_layout_line_path(render_context, line);
-		cairo_set_line_join(render_context, CAIRO_LINE_JOIN_ROUND);
-
 		if (outline_width > 0) {
+			cairo_set_operator(render_context, CAIRO_OPERATOR_SOURCE);
+			cairo_move_to(render_context, xpos, ypos);
+			pango_cairo_layout_line_path(render_context, line);
+			cairo_set_line_join(render_context, CAIRO_LINE_JOIN_ROUND);
 			cairo_set_line_width(render_context, outline_width * 2);
 			cairo_set_source_rgba(render_context,
 					RGBA_CAIRO(src->outline_color));
-			cairo_stroke_preserve(render_context);
+			cairo_stroke(render_context);
 		}
 
+		/* Handle Gradienting source by line */
 		pango_layout_iter_get_line_yrange(iter, &y1, &y2);
 		pattern = cairo_pattern_create_linear(
 				0, y1 / PANGO_SCALE + yoffset,
@@ -222,16 +213,16 @@ void render_text(struct pango_source *src)
 
 		cairo_set_source(render_context, pattern);
 		cairo_fill(render_context);
-
 		cairo_pattern_destroy(pattern);
 
-		cairo_pop_group_to_source(render_context);
-		cairo_paint(render_context);
+		cairo_move_to(render_context, xpos, ypos);
+		// cairo_set_source_rgba(render_context, 1.0,1.0,1.0,1.0);
+		pango_cairo_show_layout_line(render_context, line);
 	} while (pango_layout_iter_next_line(iter));
 	pango_layout_iter_free(iter);
 
 	obs_enter_graphics();
-	src->tex = gs_texture_create(src->width, src->height, GS_RGBA, 1,
+	src->tex = gs_texture_create(src->width, src->height, GS_BGRA, 1,
 			(const uint8_t **) &surface_data, 0);
 	obs_leave_graphics();
 
@@ -435,18 +426,18 @@ static void pango_source_update(void *data, obs_data_t *settings)
 	src->font_flags  = (uint32_t)obs_data_get_int(font, "flags");
 	obs_data_release(font);
 
-	src->align = obs_data_get_int(settings, "align");
+	src->align = (int)obs_data_get_int(settings, "align");
 
 	src->color[0] = (uint32_t)obs_data_get_int(settings, "color1");
 	src->color[1] = (uint32_t)obs_data_get_int(settings, "color2");
 
 	src->outline = obs_data_get_bool(settings, "outline");
-	src->outline_width = obs_data_get_int(settings, "outline_width");
-	src->outline_color = obs_data_get_int(settings, "outline_color");
+	src->outline_width = (uint32_t)obs_data_get_int(settings, "outline_width");
+	src->outline_color = (uint32_t)obs_data_get_int(settings, "outline_color");
 
 	src->drop_shadow = obs_data_get_bool(settings, "drop_shadow");
-	src->drop_shadow_offset = obs_data_get_int(settings, "drop_shadow_offset");
-	src->drop_shadow_color = obs_data_get_int(settings, "drop_shadow_color");
+	src->drop_shadow_offset = (uint32_t)obs_data_get_int(settings, "drop_shadow_offset");
+	src->drop_shadow_color = (uint32_t)obs_data_get_int(settings, "drop_shadow_color");
 
 	src->custom_width = (uint32_t)obs_data_get_int(settings, "custom_width");
 	src->word_wrap = obs_data_get_bool(settings, "word_wrap");
@@ -454,6 +445,7 @@ static void pango_source_update(void *data, obs_data_t *settings)
 	src->file_timestamp = 0;
 	src->file_last_checked = 0;
 
+	// Add a single queued "latest" change to catch when many fast changes are made to slow rendering text
 	render_text(src);
 }
 
