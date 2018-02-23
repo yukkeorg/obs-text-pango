@@ -1,8 +1,18 @@
 ﻿#include <obs-module.h>
 #include <util/platform.h>
 #include <sys/stat.h>
-#include <pango/pangocairo.h>
 #include <math.h>
+
+#ifdef _WIN32
+// Let us choose the backends even though API compatibilty is not guarenteed
+#define PANGO_ENABLE_BACKEND
+#include <glib.h>
+#include <pango/pangocairo.h>
+#include <pango/pangocairo-fc.h>
+#else
+#include <pango/pangocairo.h>
+#endif
+
 
 #include "text-pango.h"
 
@@ -113,7 +123,14 @@ void render_text(struct pango_source *src)
 
 	layout_context = create_layout_context();
 
-	/* Create a PangoLayout */
+	/* Set fontconfig backend to default */
+	#ifdef _WIN32
+	if (! PANGO_IS_CAIRO_FC_FONT_MAP(pango_cairo_font_map_get_default()) ) {
+		PangoCairoFontMap *fc_fontmap = g_object_new (PANGO_TYPE_CAIRO_FC_FONT_MAP, NULL);
+		pango_cairo_font_map_set_default(fc_fontmap);
+	}
+	#endif
+	/* Create a PangoLayout without manual context */
 	layout = pango_cairo_create_layout(layout_context);
 
 	set_font(src, layout);
