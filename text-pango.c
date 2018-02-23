@@ -282,6 +282,7 @@ static void pango_source_get_defaults(obs_data_t *settings)
 	obs_data_set_default_obj(settings, "font", font);
 	obs_data_release(font);
 
+
 	obs_data_set_default_int(settings, "color1", 0xFFFFFFFF);
 	obs_data_set_default_int(settings, "color2", 0xFFFFFFFF);
 
@@ -324,6 +325,20 @@ static bool pango_source_properties_drop_shadow_changed(obs_properties_t *props,
 	return true;
 }
 
+static bool pango_source_properties_gradient_changed(obs_properties_t *props,
+		obs_property_t *property, obs_data_t *settings)
+{
+	UNUSED_PARAMETER(property);
+	obs_property_t *prop;
+
+	bool enabled = obs_data_get_bool(settings, "gradient");
+
+	prop = obs_properties_get(props, "color2");
+	obs_property_set_visible(prop, enabled == true);
+
+	return true;
+}
+
 static obs_properties_t *pango_source_get_properties(void *unused)
 {
 	UNUSED_PARAMETER(unused);
@@ -338,20 +353,36 @@ static obs_properties_t *pango_source_get_properties(void *unused)
 	obs_properties_add_font(props, "font",
 		obs_module_text("Font"));
 
-	prop = obs_properties_add_list(props, "align",
-		obs_module_text("Alignment"), OBS_COMBO_TYPE_LIST,
-		OBS_COMBO_FORMAT_INT);
-	obs_property_list_add_int(prop,
-		obs_module_text("AlignLeft"), ALIGN_LEFT);
-	obs_property_list_add_int(prop,
-		obs_module_text("AlignRight"), ALIGN_RIGHT);
-	obs_property_list_add_int(prop,
-		obs_module_text("AlignCenter"), ALIGN_CENTER);
+	// Vertical?
 
+	prop = obs_properties_add_bool(props, "gradient",
+		obs_module_text("Gradient"));
+	obs_property_set_modified_callback(prop,
+		pango_source_properties_gradient_changed);
 	obs_properties_add_color(props, "color1",
 		obs_module_text("ColorTop"));
 	obs_properties_add_color(props, "color2",
 		obs_module_text("ColorBottom"));
+
+	prop = obs_properties_add_list(props, "align",
+		obs_module_text("Alignment"), OBS_COMBO_TYPE_LIST,
+		OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(prop,
+		obs_module_text("Left"), ALIGN_LEFT);
+	obs_property_list_add_int(prop,
+		obs_module_text("Right"), ALIGN_RIGHT);
+	obs_property_list_add_int(prop,
+		obs_module_text("Center"), ALIGN_CENTER);
+
+	prop = obs_properties_add_list(props, "vertical_align",
+		obs_module_text("Vertical Alignment"), OBS_COMBO_TYPE_LIST,
+		OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(prop,
+		obs_module_text("Top"), ALIGN_TOP);
+	obs_property_list_add_int(prop,
+		obs_module_text("Bottom"), ALIGN_BOTTOM);
+	obs_property_list_add_int(prop,
+		obs_module_text("Center"), ALIGN_CENTER);
 
 	prop = obs_properties_add_bool(props, "outline",
 		obs_module_text("Outline"));
@@ -375,10 +406,12 @@ static obs_properties_t *pango_source_get_properties(void *unused)
 		obs_module_text("DropShadowColor"));
 	obs_property_set_visible(prop, false);
 
-	obs_properties_add_int(props, "custom_width",
-		obs_module_text("CustomWidth"), 0, 4096, 1);
-	obs_properties_add_bool(props, "word_wrap",
-		obs_module_text("WordWrap"));
+	prop = obs_properties_add_bool(props, "log_mode",
+		obs_module_text("Chatlog Mode"));
+	// obs_properties_add_int(props, "custom_width",
+	// 	obs_module_text("CustomWidth"), 0, 4096, 1);
+	// obs_properties_add_bool(props, "word_wrap",
+	// 	obs_module_text("WordWrap"));
 
 	return props;
 }
@@ -444,9 +477,15 @@ static void pango_source_update(void *data, obs_data_t *settings)
 	obs_data_release(font);
 
 	src->align = (int)obs_data_get_int(settings, "align");
+	src->v_align = (int)obs_data_get_int(settings, "vertical_align");
 
+	src->gradient = obs_data_get_bool(settings, "gradient");
 	src->color[0] = (uint32_t)obs_data_get_int(settings, "color1");
-	src->color[1] = (uint32_t)obs_data_get_int(settings, "color2");
+	if(src->gradient) {
+		src->color[1] = (uint32_t)obs_data_get_int(settings, "color2");
+	} else {
+		src->color[1] = src->color[0];
+	}
 
 	src->outline = obs_data_get_bool(settings, "outline");
 	src->outline_width = (uint32_t)obs_data_get_int(settings, "outline_width");
@@ -456,8 +495,10 @@ static void pango_source_update(void *data, obs_data_t *settings)
 	src->drop_shadow_offset = (uint32_t)obs_data_get_int(settings, "drop_shadow_offset");
 	src->drop_shadow_color = (uint32_t)obs_data_get_int(settings, "drop_shadow_color");
 
-	src->custom_width = (uint32_t)obs_data_get_int(settings, "custom_width");
-	src->word_wrap = obs_data_get_bool(settings, "word_wrap");
+	src->log_mode = obs_data_get_bool(settings, "log_mode");
+	// WHY WHY WHY WHY
+	// src->custom_width = (uint32_t)obs_data_get_int(settings, "custom_width");
+	// src->word_wrap = obs_data_get_bool(settings, "word_wrap");
 
 	src->file_timestamp = 0;
 	src->file_last_checked = 0;

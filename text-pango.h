@@ -6,6 +6,8 @@ enum {
 	ALIGN_LEFT = 0,
 	ALIGN_RIGHT = 1,
 	ALIGN_CENTER = 2,
+	ALIGN_TOP = 3,
+	ALIGN_BOTTOM = 4, // Align with gdi/freetype if possible.
 };
 
 struct pango_source {
@@ -17,7 +19,9 @@ struct pango_source {
 	uint32_t font_flags;
 
 	int align;
+	int v_align;
 
+	bool gradient;
 	uint32_t color[2];
 
 	bool outline;
@@ -28,6 +32,7 @@ struct pango_source {
 	uint32_t drop_shadow_offset;
 	uint32_t drop_shadow_color;
 
+	bool log_mode;
 	uint32_t custom_width;
 	bool word_wrap;
 
