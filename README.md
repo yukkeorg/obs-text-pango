@@ -16,28 +16,36 @@ Current Features
 * Drop Shadow
   * Configurable offset of the drop shadow from the text
   * Configurable color for the drop shadow
+* Vertical Text
+* Reading from the end of a file
+	* Chat log mode (Last X lines from file)
+* Per Line gradients
+
+Unimplemented features
+----------------------
+* Read from file
+
+Considering Features
+----------------
 * Custom text width
   * Word wrapping
-
-Planned Features
-----------------
-
-* Reading the text from a file
-* Chat log mode (Last 6 lines from file)
 
 Build
 -----
 
 You can either build the plugin as a standalone project or integrate it
-into the build of OBS Studio.
+into the build of OBS Studio (untested). Currently this is very helterskelter
+in order to support static compilation of most dependencies.
 
 Building it as a standalone project follows the standard cmake approach.
-Create a new directory and run `cmake ... <path_to_source>` for whichever
-build system you use. You may have to set the `CMAKE_INCLUDE_PATH`
-environment variable to the location of libobs's header files if cmake
-does not find them automatically. You may also have to set the
-`CMAKE_LIBRARY_PATH` environment variable to the location of the libobs
-binary if cmake does not find it automatically.
+Create a new directory and run 
+`cmake ... <path_to_source> -DCMAKE_INSTALL_PREFIX=<path_to_deps_dir>` for
+whichever build system you use (only ninja tested). You may have to set 
+the `OBS_DIR` environment variable to the location of the OBS source tree
+and adjust the PATH_SUFFIXES as appropriate for your build directory.
+
+alternately set `CMAKE_LIBRARY_PATH` and `CMAKE_INCLUDE_PATH` to include 
+the path to libobs/libobs.h and libobs/libobs.lib
 
 To integrate the plugin into the OBS Studio build put the source into a
 subdirectory of the `plugins` folder of OBS Studio and add it to the
