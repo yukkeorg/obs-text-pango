@@ -45,7 +45,8 @@ link_directories("D:/projects/text-rendering/build_release/install/lib")
 
 set(text-pango_SOURCES
 	text-pango.c
-	text-pango.h)
+	text-pango.h
+	text-utilities.h)
 
 add_library(text-pango MODULE
 	${text-pango_SOURCES})

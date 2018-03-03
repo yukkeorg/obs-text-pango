@@ -12,11 +12,15 @@ enum {
 
 struct pango_source {
 	/* Config */
+	bool from_file;
 	char *text;
+	char *text_file;
 
 	char *font_name;
 	uint16_t font_size;
 	uint32_t font_flags;
+
+	bool vertical;
 
 	int align;
 	int v_align;
@@ -33,6 +37,7 @@ struct pango_source {
 	uint32_t drop_shadow_color;
 
 	bool log_mode;
+	uint32_t log_lines;
 	uint32_t custom_width;
 	bool word_wrap;
 

@@ -15,6 +15,7 @@
 
 
 #include "text-pango.h"
+#include "text-utilities.h"
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("text-pango", "en-US")
@@ -29,74 +30,8 @@ OBS_MODULE_USE_DEFAULT_LOCALE("text-pango", "en-US")
 #define DEFAULT_FACE "Sans Serif"
 #endif
 
-cairo_t *create_layout_context()
-{
-	cairo_surface_t *temp_surface;
-	cairo_t *context;
 
-	temp_surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 0, 0);
-	context = cairo_create(temp_surface);
-	cairo_surface_destroy(temp_surface);
-
-	return context;
-}
-
-void get_text_size(PangoLayout *layout, int *width, int *height)
-{
-	int w, h;
-
-	pango_layout_get_size (layout, &w, &h);
-	/* Divide by pango scale to get dimensions in pixels */
-	*width = w / PANGO_SCALE;
-	*height = h / PANGO_SCALE;
-}
-
-void set_font(struct pango_source *src, PangoLayout *layout) {
-	PangoFontDescription *desc;
-
-	desc = pango_font_description_new ();
-	pango_font_description_set_family(desc, src->font_name);
-	pango_font_description_set_size(desc, src->font_size * PANGO_SCALE);
-	pango_font_description_set_weight(desc, !!(src->font_flags & OBS_FONT_BOLD) ? PANGO_WEIGHT_BOLD : 0);
-	pango_font_description_set_style(desc, !!(src->font_flags & OBS_FONT_ITALIC) ? PANGO_STYLE_ITALIC : 0);
-	pango_layout_set_font_description(layout, desc);
-	pango_font_description_free(desc);
-}
-
-void set_alignment(struct pango_source *src, PangoLayout *layout) {
-	PangoAlignment pangoAlignment;
-
-	switch (src->align) {
-	case ALIGN_LEFT:
-		pangoAlignment = PANGO_ALIGN_LEFT;
-		break;
-	case ALIGN_RIGHT:
-		pangoAlignment = PANGO_ALIGN_RIGHT;
-		break;
-	case ALIGN_CENTER:
-		pangoAlignment = PANGO_ALIGN_CENTER;
-		break;
-	}
-	pango_layout_set_alignment(layout, pangoAlignment);
-}
-
-cairo_t *create_cairo_context(struct pango_source *src,
-	cairo_surface_t **surface, uint8_t **surface_data)
-{
-	*surface_data = bzalloc(src->width * src->height * 4);
-	*surface = cairo_image_surface_create_for_data(*surface_data,
-			CAIRO_FORMAT_ARGB32,
-			src->width, src->height, 4 * src->width);
-
-	return cairo_create(*surface);
-}
-
-#define RGBA_CAIRO(c) \
-	 (c & 0xff) / 256.0, \
-	((c & 0xff00) >> 8) / 256.0, \
-	((c & 0xff0000) >> 16) / 256.0, \
-	((c & 0xff000000) >> 24) / 256.0
-
+// Render fails after about 600 characters
 void render_text(struct pango_source *src)
 {
 	cairo_t *layout_context;
@@ -106,6 +41,7 @@ void render_text(struct pango_source *src)
 	PangoLayout *layout;
 	int text_width, text_height;
 
+	//Clear any old textures
 	if (src->tex) {
 		obs_enter_graphics();
 		gs_texture_destroy(src->tex);
@@ -121,8 +57,6 @@ void render_text(struct pango_source *src)
 	int outline_width = src->outline ? src->outline_width : 0;
 	int drop_shadow_offset = src->drop_shadow ? src->drop_shadow_offset : 0;
 
-	layout_context = create_layout_context();
-
 	/* Set fontconfig backend to default */
 	#ifdef _WIN32
 	if (! PANGO_IS_CAIRO_FC_FONT_MAP(pango_cairo_font_map_get_default()) ) {
@@ -131,53 +65,47 @@ void render_text(struct pango_source *src)
 	}
 	#endif
 	/* Create a PangoLayout without manual context */
+	layout_context = create_layout_context();
 	layout = pango_cairo_create_layout(layout_context);
+	if(src->vertical) {
+		pango_context_set_base_gravity(pango_layout_get_context(layout), PANGO_GRAVITY_EAST);
+	}
 
 	set_font(src, layout);
-	set_alignment(src, layout);
-
-	if (src->custom_width > 0 && src->word_wrap)
-		pango_layout_set_width(layout, src->custom_width * PANGO_SCALE);
+	set_halignment(src, layout);
 
 	pango_layout_set_text(layout, src->text, -1);
 
 	/* Get text dimensions and create a context to render to */
-	get_text_size(layout, &text_width, &text_height);
-	if (src->custom_width > 0)
-		src->width = src->custom_width;
-	else
-		src->width = text_width;
+	get_rendered_text_size(layout, &text_width, &text_height); // Requires double paint
+	src->width = text_width;
 	src->width += outline_width;
 	src->width += max(outline_width, drop_shadow_offset);
 	src->height = text_height;
 	src->height += outline_width;
 	src->height += max(outline_width, drop_shadow_offset);
-	render_context = create_cairo_context(src, &surface, &surface_data);
-
-	double xoffset;
-	if (src->custom_width && !src->word_wrap) {
-		switch (src->align) {
-		case ALIGN_LEFT:
-			xoffset = 0;
-			break;
-		case ALIGN_RIGHT:
-			xoffset = src->custom_width - text_width;
-			break;
-		case ALIGN_CENTER:
-			xoffset = (src->custom_width - text_width) / 2;
-			break;
-		}
-	} else {
-		xoffset = 0;
+	if(src->vertical) {
+		int tmp = src->width;
+		src->width = src->height;
+		src->height = tmp;
 	}
+
+	render_context = create_render_context(src, &surface, &surface_data);
+
+	double xoffset = 0;
 	xoffset += outline_width;
 
-	double yoffset;
-	yoffset = 0;
+	double yoffset = 0;
 	yoffset += outline_width;
 
-	/* Render */
+	/* Change to render context */
 	pango_cairo_update_layout(render_context, layout);
+
+	/* Transform coordinates and move origin for vertical text */
+	if(src->vertical) {
+		cairo_translate(render_context, src->width, 0);
+		cairo_rotate(render_context, (M_PI*0.5));
+	}
 
 	PangoLayoutIter *iter = pango_layout_get_iter(layout);
 	do {
@@ -200,10 +128,9 @@ void render_text(struct pango_source *src)
 					ypos + drop_shadow_offset);
 			cairo_set_source_rgba(render_context,
 					RGBA_CAIRO(src->drop_shadow_color));
-			pango_cairo_show_layout_line(render_context, line);
+			pango_cairo_layout_line_path(render_context, line);
+			cairo_fill(render_context);
 		}
-
-		// cairo_push_group(render_context);
 
 		/* Draw text with outline */
 		if (outline_width > 0) {
@@ -233,11 +160,11 @@ void render_text(struct pango_source *src)
 		cairo_pattern_destroy(pattern);
 
 		cairo_move_to(render_context, xpos, ypos);
-		// cairo_set_source_rgba(render_context, 1.0,1.0,1.0,1.0);
 		pango_cairo_show_layout_line(render_context, line);
 	} while (pango_layout_iter_next_line(iter));
 	pango_layout_iter_free(iter);
 
+	// blog(LOG_WARNING,"[pango]: Creating texture of dim (%i,%i)", src->width, src->height);
 	obs_enter_graphics();
 	src->tex = gs_texture_create(src->width, src->height, GS_BGRA, 1,
 			(const uint8_t **) &surface_data, 0);
@@ -291,52 +218,9 @@ static void pango_source_get_defaults(obs_data_t *settings)
 
 	obs_data_set_default_int(settings, "drop_shadow_offset", 4);
 	obs_data_set_default_int(settings, "drop_shadow_color", 0xFF000000);
-}
 
-static bool pango_source_properties_outline_changed(obs_properties_t *props,
-		obs_property_t *property, obs_data_t *settings)
-{
-	UNUSED_PARAMETER(property);
-	obs_property_t *prop;
+	obs_data_set_default_int(settings, "log_lines", 6);
 
-	bool enabled = obs_data_get_bool(settings, "outline");
-
-	prop = obs_properties_get(props, "outline_width");
-	obs_property_set_visible(prop, enabled);
-	prop = obs_properties_get(props, "outline_color");
-	obs_property_set_visible(prop, enabled);
-
-	return true;
-}
-
-static bool pango_source_properties_drop_shadow_changed(obs_properties_t *props,
-		obs_property_t *property, obs_data_t *settings)
-{
-	UNUSED_PARAMETER(property);
-	obs_property_t *prop;
-
-	bool enabled = obs_data_get_bool(settings, "drop_shadow");
-
-	prop = obs_properties_get(props, "drop_shadow_offset");
-	obs_property_set_visible(prop, enabled);
-	prop = obs_properties_get(props, "drop_shadow_color");
-	obs_property_set_visible(prop, enabled);
-
-	return true;
-}
-
-static bool pango_source_properties_gradient_changed(obs_properties_t *props,
-		obs_property_t *property, obs_data_t *settings)
-{
-	UNUSED_PARAMETER(property);
-	obs_property_t *prop;
-
-	bool enabled = obs_data_get_bool(settings, "gradient");
-
-	prop = obs_properties_get(props, "color2");
-	obs_property_set_visible(prop, enabled == true);
-
-	return true;
 }
 
 static obs_properties_t *pango_source_get_properties(void *unused)
@@ -347,13 +231,22 @@ static obs_properties_t *pango_source_get_properties(void *unused)
 
 	props = obs_properties_create();
 
-	obs_properties_add_text(props, "text",
-		obs_module_text("Text"), OBS_TEXT_MULTILINE);
-
 	obs_properties_add_font(props, "font",
 		obs_module_text("Font"));
+	prop = obs_properties_add_bool(props, "from_file",
+		obs_module_text("ReadFromFile"));
+	obs_property_set_modified_callback(prop,
+		pango_source_properties_from_file_changed);
+
+	obs_properties_add_text(props, "text",
+		obs_module_text("Text"), OBS_TEXT_MULTILINE);
+	obs_properties_add_path(props, "text_file",
+		obs_module_text("TextFile"), OBS_PATH_FILE,
+		NULL, NULL);
 
 	// Vertical?
+	obs_properties_add_bool(props, "vertical",
+		obs_module_text("Vertical"));
 
 	prop = obs_properties_add_bool(props, "gradient",
 		obs_module_text("Gradient"));
@@ -407,7 +300,12 @@ static obs_properties_t *pango_source_get_properties(void *unused)
 	obs_property_set_visible(prop, false);
 
 	prop = obs_properties_add_bool(props, "log_mode",
-		obs_module_text("Chatlog Mode"));
+		obs_module_text("ChatlogMode"));
+	obs_property_set_modified_callback(prop,
+		pango_source_properties_log_mode_changed);
+	prop = obs_properties_add_int(props, "log_lines",
+		obs_module_text("ChatlogLines"), 1, 1000, 1);
+	obs_property_set_visible(prop, false);
 	// obs_properties_add_int(props, "custom_width",
 	// 	obs_module_text("CustomWidth"), 0, 4096, 1);
 	// obs_properties_add_bool(props, "word_wrap",
@@ -463,10 +361,10 @@ static void pango_source_update(void *data, obs_data_t *settings)
 {
 	struct pango_source *src = data;
 	obs_data_t *font;
-
-	if (src->text)
+	if (src->text) {
 		bfree(src->text);
-	src->text = bstrdup(obs_data_get_string(settings, "text"));
+		src->text = NULL;
+	}
 
 	font = obs_data_get_obj(settings, "font");
 	if (src->font_name)
@@ -476,6 +374,7 @@ static void pango_source_update(void *data, obs_data_t *settings)
 	src->font_flags  = (uint32_t)obs_data_get_int(font, "flags");
 	obs_data_release(font);
 
+	src->vertical = obs_data_get_bool(settings, "vertical");
 	src->align = (int)obs_data_get_int(settings, "align");
 	src->v_align = (int)obs_data_get_int(settings, "vertical_align");
 
@@ -496,12 +395,27 @@ static void pango_source_update(void *data, obs_data_t *settings)
 	src->drop_shadow_color = (uint32_t)obs_data_get_int(settings, "drop_shadow_color");
 
 	src->log_mode = obs_data_get_bool(settings, "log_mode");
+	src->log_lines = (uint32_t)obs_data_get_int(settings, "log_lines");
 	// WHY WHY WHY WHY
 	// src->custom_width = (uint32_t)obs_data_get_int(settings, "custom_width");
 	// src->word_wrap = obs_data_get_bool(settings, "word_wrap");
 
 	src->file_timestamp = 0;
 	src->file_last_checked = 0;
+
+	src->from_file = obs_data_get_bool(settings, "from_file");
+	if(src->from_file) { // Questionable code
+		if (src->text_file) {
+			bfree(src->text_file);
+			src->text_file = NULL;
+		}
+		src->text_file = bstrdup(obs_data_get_string(settings, "text_file"));
+		if(!read_from_end(&(src->text), src->text_file, src->log_lines)) {
+			src->text = bstrdup(obs_data_get_string(settings, "text"));
+		}
+	} else {
+		src->text = bstrdup(obs_data_get_string(settings, "text"));
+	}
 
 	// Add a single queued "latest" change to catch when many fast changes are made to slow rendering text
 	render_text(src);
