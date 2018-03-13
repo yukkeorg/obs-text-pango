@@ -1,5 +1,6 @@
 ﻿#include <obs-module.h>
 #include <util/platform.h>
+#include <util/dstr.h>
 #include <sys/stat.h>
 #include <math.h>
 
@@ -12,6 +13,8 @@
 #else
 #include <pango/pangocairo.h>
 #endif
+
+#include <fontconfig/fontconfig.h>
 
 
 #include "text-pango.h"
@@ -417,7 +420,7 @@ static void pango_source_update(void *data, obs_data_t *settings)
 		src->text = bstrdup(obs_data_get_string(settings, "text"));
 	}
 
-	// Add a single queued "latest" change to catch when many fast changes are made to slow rendering text
+	//todo: Add a single queued "latest" change to catch when many fast changes are made to slow rendering text
 	render_text(src);
 }
 
@@ -451,6 +454,32 @@ bool obs_module_load()
 {
 	obs_register_source(&pango_source_info);
 
+#if _WIN32
+	// Fontconfig plz why do you do such magic to my paths
+	const char *path = obs_get_module_data_path(obs_current_module());
+	const char *abs_path = os_get_abs_path_ptr(path);
+	// bfree(path);
+	const char *tmplt_config_path = obs_module_file("fonts.conf");
+	const char *tmplt_config = os_quick_read_utf8_file(tmplt_config_path);
+	// bfree(tmplt_config_path);
+	struct dstr config_buf = {0};
+	dstr_copy(&config_buf, tmplt_config);
+	// bfree(tmplt_config);
+	dstr_replace(&config_buf, "${plugin_path}", abs_path);
+	FcConfig *config = FcConfigCreate();
+	FcBool complain = true;
+	if(FcConfigParseAndLoadFromMemory(config, config_buf.array, complain) != FcTrue){
+#else
+	if(FcConfigParseAndLoad(config, NULL, complain) != FcTrue){
+#endif
+		FcConfigDestroy(config);
+		blog(LOG_ERROR, "Failed to load fontconfig from memory: File as follows:\n %s",  config_buf.array);
+		dstr_free(&config_buf);
+		return false;
+	}
+	FcConfigSetCurrent(config);
+	FcConfigBuildFonts(config);
+	// dstr_free(&config_buf);
 	return true;
 }
 
