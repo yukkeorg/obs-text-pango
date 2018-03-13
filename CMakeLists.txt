@@ -55,17 +55,22 @@ target_link_libraries(text-pango
 	${CAIRO_LIBRARIES}
 	${PANGO_LIBRARIES}
 	intl
-	mini-fribidi
+	mini-fribidi # on linux should be gnu fribidi
 	${PANGOWIN32_LIBRARIES}
 	${PANGOCAIRO_LIBRARIES}
 	pixman-1_static
 	zlib
 	freetype
 	harfbuzz
-	libpng16
+	libpng16_static
 	expat
 	${FONTCONFIG_LIBRARIES}
-	usp10)
+	usp10) # win only
 target_compile_definitions(text-pango PRIVATE ${CAIRO_C_FLAGS})
+
+install(TARGETS text-pango 
+	LIBRARY DESTINATION obs-plugins/64bit/
+)
+install(DIRECTORY data/ DESTINATION data/obs-plugins/text-pango)
 # install_obs_plugin_with_data(text-pango data)
 
