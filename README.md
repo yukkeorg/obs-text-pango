@@ -20,10 +20,11 @@ Current Features
 * Reading from the end of a file
 	* Chat log mode (Last X lines from file)
 * Per Line gradients
+* Read from file
 
 Unimplemented features
 ----------------------
-* Read from file
+* Vertical Text Align
 
 Considering Features
 ----------------
