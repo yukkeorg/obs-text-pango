@@ -11,14 +11,14 @@ if(NOT OBS_OUTPUT_DIR)
 
 	find_path(OBS_INCLUDE_DIRS
 		obs-module.h
-		HINTS $ENV{OBS_DIR}
+		HINTS $ENV{OBS_DIR} ${OBS_DIR}
 		PATH_SUFFIXES 
 			libobs)
 	find_library(OBS_LIBRARIES
 		NAMES obs libobs
-		HINTS $ENV{OBS_DIR}
+		HINTS $ENV{OBS_DIR} ${OBS_DIR}
 		PATH_SUFFIXES
-			build_release/libobs
+			build_r/libobs
 			libobs)
 # Build as submodule of obs-studio
 else()
@@ -28,12 +28,14 @@ else()
 		libobs)
 endif()
 
-find_package(pango REQUIRED)
-find_package(cairo REQUIRED)
-find_package(pangocairo REQUIRED)
-find_package(pangowin32 REQUIRED)
-find_package(fontconfig REQUIRED)
-find_package(freetype REQUIRED)
+find_package(Pango REQUIRED)
+find_package(Cairo REQUIRED)
+find_package(Pangocairo REQUIRED)
+if(WIN32)
+	find_package(Pangowin32 REQUIRED)
+endif()
+find_package(Fontconfig REQUIRED)
+find_package(Freetype REQUIRED)
 
 include_directories(
 	${OBS_INCLUDE_DIRS}
@@ -47,6 +49,18 @@ set(text-pango_SOURCES
 	text-pango.c
 	text-pango.h
 	text-utilities.h)
+set(win32_static_LIBRARIES
+	intl
+	mini-fribidi
+	pixman-1_static
+	zlib
+	harfbuzz
+	libpng16_static
+	expat
+	usp10)
+if(WIN32)
+	set(PLATFORM_LIBRARIES ${win32_static_LIBRARIES})
+endif()
 
 add_library(text-pango MODULE
 	${text-pango_SOURCES})
@@ -54,23 +68,18 @@ target_link_libraries(text-pango
 	${OBS_LIBRARIES}
 	${CAIRO_LIBRARIES}
 	${PANGO_LIBRARIES}
-	intl
-	mini-fribidi # on linux should be gnu fribidi
 	${PANGOWIN32_LIBRARIES}
 	${PANGOCAIRO_LIBRARIES}
-	pixman-1_static
-	zlib
-	freetype
-	harfbuzz
-	libpng16_static
-	expat
+	${FREETYPE_LIBRARIES}
 	${FONTCONFIG_LIBRARIES}
-	usp10) # win only
+	${PLATFORM_LIBRARIES}) # win only currently
 target_compile_definitions(text-pango PRIVATE ${CAIRO_C_FLAGS})
 
 install(TARGETS text-pango 
 	LIBRARY DESTINATION obs-plugins/64bit/
 )
-install(DIRECTORY data/ DESTINATION data/obs-plugins/text-pango)
+if(WIN32) # only win32 requires fontconfig stuff.
+	install(DIRECTORY data/ DESTINATION data/obs-plugins/text-pango)
+endif()
 # install_obs_plugin_with_data(text-pango data)
 

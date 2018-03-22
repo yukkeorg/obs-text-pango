@@ -11,7 +11,7 @@ find_path(PANGO_INCLUDE_DIR
 
 find_library(PANGO_LIBRARY
     NAMES
-        pango libpango
+        pango libpango pango-1.0
     HINTS
         ${PC_PANGO_LIBDIR}
         ${PC_PANGO_LIBRARIES}

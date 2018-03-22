@@ -11,10 +11,9 @@ FIND_PATH(PANGOCAIRO_INCLUDE_DIR
 
 FIND_LIBRARY(PANGOCAIRO_LIBRARY
     NAMES
-        pangocairo libpangocairo
+        pangocairo libpangocairo pangocairo-1.0
     HINTS
         ${PC_PANGOCAIRO_LIBDIR}
-        ${PC_PANGOCAIRO_LIBRARIES}
     PATH_SUFFIXES
         pango
 )

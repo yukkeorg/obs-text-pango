@@ -34,6 +34,9 @@ OBS_MODULE_USE_DEFAULT_LOCALE("text-pango", "en-US")
 #endif
 
 
+#define max(a,b) (a > b ? a : b)
+
+
 // Render fails after about 600 characters
 void render_text(struct pango_source *src)
 {
@@ -454,6 +457,8 @@ bool obs_module_load()
 {
 	obs_register_source(&pango_source_info);
 
+	FcConfig *config = FcConfigCreate();
+	FcBool complain = true;
 #if _WIN32
 	// Fontconfig plz why do you do such magic to my paths
 	const char *path = obs_get_module_data_path(obs_current_module());
@@ -466,15 +471,15 @@ bool obs_module_load()
 	dstr_copy(&config_buf, tmplt_config);
 	// bfree(tmplt_config);
 	dstr_replace(&config_buf, "${plugin_path}", abs_path);
-	FcConfig *config = FcConfigCreate();
-	FcBool complain = true;
 	if(FcConfigParseAndLoadFromMemory(config, config_buf.array, complain) != FcTrue){
 #else
 	if(FcConfigParseAndLoad(config, NULL, complain) != FcTrue){
 #endif
 		FcConfigDestroy(config);
-		blog(LOG_ERROR, "Failed to load fontconfig from memory: File as follows:\n %s",  config_buf.array);
+		blog(LOG_ERROR, "Failed to load fontconfig");
+#if _WIN32
 		dstr_free(&config_buf);
+#endif
 		return false;
 	}
 	FcConfigSetCurrent(config);
