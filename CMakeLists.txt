@@ -8,6 +8,7 @@ if(NOT OBS_OUTPUT_DIR)
 	include(ObsHelpers)
 
 	set(CMAKE_C_STANDARD 11)
+	set(STANDALONE_PLUGIN TRUE)
 
 	find_path(OBS_INCLUDE_DIRS
 		obs-module.h
@@ -18,7 +19,7 @@ if(NOT OBS_OUTPUT_DIR)
 		NAMES obs libobs
 		HINTS $ENV{OBS_DIR} ${OBS_DIR}
 		PATH_SUFFIXES
-			build_r/libobs
+			build_rel/libobs
 			libobs)
 # Build as submodule of obs-studio
 else()
@@ -49,6 +50,7 @@ set(text-pango_SOURCES
 	text-pango.c
 	text-pango.h
 	text-utilities.h)
+
 set(win32_static_LIBRARIES
 	intl
 	mini-fribidi
@@ -75,11 +77,21 @@ target_link_libraries(text-pango
 	${PLATFORM_LIBRARIES}) # win only currently
 target_compile_definitions(text-pango PRIVATE ${CAIRO_C_FLAGS})
 
-install(TARGETS text-pango 
-	LIBRARY DESTINATION obs-plugins/64bit/
-)
-if(WIN32) # only win32 requires fontconfig stuff.
-	install(DIRECTORY data/ DESTINATION data/obs-plugins/text-pango)
+
+if(STANDALONE_PLUGIN)
+	install(TARGETS text-pango 
+		LIBRARY DESTINATION obs-plugins/64bit/
+	)
+	install(DIRECTORY data/common/ DESTINATION data/obs-plugins/text-pango)
+	# Platform specific data, like fontconfig in win32
+	if(WIN32)
+		install(DIRECTORY data/win32/ DESTINATION data/obs-plugins/text-pango)
+	endif()
+else()
+	install_obs_plugin_with_data(text-pango data/common)
+	if(WIN32)
+		install_obs_plugin_with_data(text-pango data/win32)
+	endif()
+
 endif()
-# install_obs_plugin_with_data(text-pango data)
 
