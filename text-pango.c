@@ -34,6 +34,7 @@ OBS_MODULE_USE_DEFAULT_LOCALE("text-pango", "en-US")
 #endif
 
 
+#define FILE_CHECK_TIMEOUT_SEC 1.0
 #define max(a,b) (a > b ? a : b)
 
 
@@ -73,7 +74,7 @@ void render_text(struct pango_source *src)
 	/* Create a PangoLayout without manual context */
 	layout_context = create_layout_context();
 	layout = pango_cairo_create_layout(layout_context);
-	if(src->vertical) {
+	if (src->vertical) {
 		pango_context_set_base_gravity(pango_layout_get_context(layout), PANGO_GRAVITY_EAST);
 	}
 
@@ -90,7 +91,7 @@ void render_text(struct pango_source *src)
 	src->height = text_height;
 	src->height += outline_width;
 	src->height += max(outline_width, drop_shadow_offset);
-	if(src->vertical) {
+	if (src->vertical) {
 		int tmp = src->width;
 		src->width = src->height;
 		src->height = tmp;
@@ -108,7 +109,7 @@ void render_text(struct pango_source *src)
 	pango_cairo_update_layout(render_context, layout);
 
 	/* Transform coordinates and move origin for vertical text */
-	if(src->vertical) {
+	if (src->vertical) {
 		cairo_translate(render_context, src->width, 0);
 		cairo_rotate(render_context, (M_PI*0.5));
 	}
@@ -359,8 +360,29 @@ static void pango_source_render(void *data, gs_effect_t *effect)
 
 static void pango_video_tick(void *data, float seconds)
 {
-	UNUSED_PARAMETER(data);
-	UNUSED_PARAMETER(seconds);
+	struct pango_source *src = data;
+
+	if (src->from_file) { // Questionable check
+		src->file_last_checked += seconds;
+		if (src->file_last_checked > FILE_CHECK_TIMEOUT_SEC) {
+			src->file_last_checked = 0.0;
+			blog(LOG_INFO, "Stat'ing file");
+			struct stat stat = {0};
+			os_stat(src->text_file, &stat);
+			if (src->file_timestamp != stat.st_mtime) {
+				blog(LOG_INFO, "File changed, reloading");
+				char *read_file = NULL;
+				if (read_from_end(&read_file, src->text_file, src->log_lines)) {
+					if (src->text) {
+						bfree(src->text);
+					}
+					src->text = read_file;
+					src->file_timestamp = stat.st_mtime;
+					render_text(src);
+				}
+			}
+		}
+	}
 }
 
 static void pango_source_update(void *data, obs_data_t *settings)
@@ -386,7 +408,7 @@ static void pango_source_update(void *data, obs_data_t *settings)
 
 	src->gradient = obs_data_get_bool(settings, "gradient");
 	src->color[0] = (uint32_t)obs_data_get_int(settings, "color1");
-	if(src->gradient) {
+	if (src->gradient) {
 		src->color[1] = (uint32_t)obs_data_get_int(settings, "color2");
 	} else {
 		src->color[1] = src->color[0];
@@ -407,17 +429,21 @@ static void pango_source_update(void *data, obs_data_t *settings)
 	// src->word_wrap = obs_data_get_bool(settings, "word_wrap");
 
 	src->file_timestamp = 0;
-	src->file_last_checked = 0;
+	src->file_last_checked = 0.0;
 
 	src->from_file = obs_data_get_bool(settings, "from_file");
-	if(src->from_file) { // Questionable code
+	if (src->from_file) { // Questionable check
 		if (src->text_file) {
 			bfree(src->text_file);
 			src->text_file = NULL;
 		}
 		src->text_file = bstrdup(obs_data_get_string(settings, "text_file"));
-		if(!read_from_end(&(src->text), src->text_file, src->log_lines)) {
+		if (!read_from_end(&(src->text), src->text_file, src->log_lines)) {
 			src->text = bstrdup(obs_data_get_string(settings, "text"));
+		} else {
+			struct stat stat = {0};
+			os_stat(src->text_file, &stat);
+			src->file_timestamp = stat.st_mtime;
 		}
 	} else {
 		src->text = bstrdup(obs_data_get_string(settings, "text"));
@@ -471,9 +497,9 @@ bool obs_module_load()
 	dstr_copy(&config_buf, tmplt_config);
 	// bfree(tmplt_config);
 	dstr_replace(&config_buf, "${plugin_path}", abs_path);
-	if(FcConfigParseAndLoadFromMemory(config, config_buf.array, complain) != FcTrue){
+	if (FcConfigParseAndLoadFromMemory(config, config_buf.array, complain) != FcTrue) {
 #else
-	if(FcConfigParseAndLoad(config, NULL, complain) != FcTrue){
+	if (FcConfigParseAndLoad(config, NULL, complain) != FcTrue) {
 #endif
 		FcConfigDestroy(config);
 		blog(LOG_ERROR, "Failed to load fontconfig");

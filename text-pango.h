@@ -47,5 +47,5 @@ struct pango_source {
 
 	bool file_load_failed;
 	time_t file_timestamp;
-	uint64_t file_last_checked;
+	float file_last_checked; // Sec since last checked
 };

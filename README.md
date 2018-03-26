@@ -17,37 +17,43 @@ Current Features
   * Configurable offset of the drop shadow from the text
   * Configurable color for the drop shadow
 * Vertical Text
-* Reading from the end of a file
-	* Chat log mode (Last X lines from file)
 * Per Line gradients
 * Read from file
+  * Chat log mode (Last X lines from file)
+  * Reload on changes
 
 Unimplemented features
 ----------------------
-* Vertical Text Align
+* UTF-16 file support
+* Opacity
 
 Considering Features
 ----------------
 * Custom text width
+  * Vertical Text Align
   * Word wrapping
 
 Build
 -----
 
 You can either build the plugin as a standalone project or integrate it
-into the build of OBS Studio (untested). Currently this is very helterskelter
-in order to support static compilation of most dependencies.
+into the build of OBS Studio (untested).
 
 Building it as a standalone project follows the standard cmake approach.
 Create a new directory and run 
-`cmake ... <path_to_source> -DCMAKE_INSTALL_PREFIX=<path_to_deps_dir>` for
-whichever build system you use (only ninja tested). You may have to set 
-the `OBS_DIR` environment variable to the location of the OBS source tree
-and adjust the PATH_SUFFIXES as appropriate for your build directory.
+```bash
+cmake ... <path_to_source>
+	-DCMAKE_INSTALL_PREFIX=<path_to_deps_dir>
+	-DOBS_DIR=<path_to_obs>
+```
+for whichever build system you use (only ninja tested). You may also set
+the `OBS_DIR` environment variable to the location of the OBS source tree.
+Depending on the name of your obs build dir adjust `PATH_SUFFIXES`
+appropriately.
 
-alternately set `CMAKE_LIBRARY_PATH` and `CMAKE_INCLUDE_PATH` to include 
-the path to libobs/libobs.h and libobs/libobs.lib
+If the include cmake find modules fail to find packages on your system
+please submit a PR with appropriate `NAMES` to find them on your platform.
 
-To integrate the plugin into the OBS Studio build put the source into a
-subdirectory of the `plugins` folder of OBS Studio and add it to the
-CMakeLists.txt.
+To integrate the plugin into the OBS Studio build put the source into
+the `plugins/text-pango` folder of OBS Studio source and add it to the
+`plugins/CMakeLists.txt`.
