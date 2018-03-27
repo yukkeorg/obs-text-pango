@@ -255,7 +255,6 @@ static obs_properties_t *pango_source_get_properties(void *unused)
 		obs_module_text("TextFile"), OBS_PATH_FILE,
 		NULL, NULL);
 
-	// Vertical?
 	obs_properties_add_bool(props, "vertical",
 		obs_module_text("Vertical"));
 
@@ -264,39 +263,39 @@ static obs_properties_t *pango_source_get_properties(void *unused)
 	obs_property_set_modified_callback(prop,
 		pango_source_properties_gradient_changed);
 	obs_properties_add_color(props, "color1",
-		obs_module_text("ColorTop"));
+		obs_module_text("Gradient.Color"));
 	obs_properties_add_color(props, "color2",
-		obs_module_text("ColorBottom"));
+		obs_module_text("Gradient.Color2"));
 
 	prop = obs_properties_add_list(props, "align",
 		obs_module_text("Alignment"), OBS_COMBO_TYPE_LIST,
 		OBS_COMBO_FORMAT_INT);
 	obs_property_list_add_int(prop,
-		obs_module_text("Left"), ALIGN_LEFT);
+		obs_module_text("Alignment.Left"), ALIGN_LEFT);
 	obs_property_list_add_int(prop,
-		obs_module_text("Right"), ALIGN_RIGHT);
+		obs_module_text("Alignment.Right"), ALIGN_RIGHT);
 	obs_property_list_add_int(prop,
-		obs_module_text("Center"), ALIGN_CENTER);
+		obs_module_text("Alignment.Center"), ALIGN_CENTER);
 
-	prop = obs_properties_add_list(props, "vertical_align",
-		obs_module_text("Vertical Alignment"), OBS_COMBO_TYPE_LIST,
-		OBS_COMBO_FORMAT_INT);
-	obs_property_list_add_int(prop,
-		obs_module_text("Top"), ALIGN_TOP);
-	obs_property_list_add_int(prop,
-		obs_module_text("Bottom"), ALIGN_BOTTOM);
-	obs_property_list_add_int(prop,
-		obs_module_text("Center"), ALIGN_CENTER);
+	// prop = obs_properties_add_list(props, "vertical_align",
+	// 	obs_module_text("Vertical Alignment"), OBS_COMBO_TYPE_LIST,
+	// 	OBS_COMBO_FORMAT_INT);
+	// obs_property_list_add_int(prop,
+	// 	obs_module_text("Top"), ALIGN_TOP);
+	// obs_property_list_add_int(prop,
+	// 	obs_module_text("Bottom"), ALIGN_BOTTOM);
+	// obs_property_list_add_int(prop,
+	// 	obs_module_text("Center"), ALIGN_CENTER);
 
 	prop = obs_properties_add_bool(props, "outline",
 		obs_module_text("Outline"));
 	obs_property_set_modified_callback(prop,
 		pango_source_properties_outline_changed);
 	prop = obs_properties_add_int(props, "outline_width",
-		obs_module_text("OutlineWidth"), 1, 256, 1);
+		obs_module_text("Outline.Size"), 1, 256, 1);
 	obs_property_set_visible(prop, false);
 	prop = obs_properties_add_color(props, "outline_color",
-		obs_module_text("OutlineColor"));
+		obs_module_text("Outline.Color"));
 	obs_property_set_visible(prop, false);
 
 	prop = obs_properties_add_bool(props, "drop_shadow",
@@ -304,10 +303,10 @@ static obs_properties_t *pango_source_get_properties(void *unused)
 	obs_property_set_modified_callback(prop,
 		pango_source_properties_drop_shadow_changed);
 	prop = obs_properties_add_int(props, "drop_shadow_offset",
-		obs_module_text("DropShadowOffset"), 1, 256, 1);
+		obs_module_text("DropShadow.Offset"), 1, 256, 1);
 	obs_property_set_visible(prop, false);
 	prop = obs_properties_add_color(props, "drop_shadow_color",
-		obs_module_text("DropShadowColor"));
+		obs_module_text("DropShadow.Color"));
 	obs_property_set_visible(prop, false);
 
 	prop = obs_properties_add_bool(props, "log_mode",
@@ -315,7 +314,7 @@ static obs_properties_t *pango_source_get_properties(void *unused)
 	obs_property_set_modified_callback(prop,
 		pango_source_properties_log_mode_changed);
 	prop = obs_properties_add_int(props, "log_lines",
-		obs_module_text("ChatlogLines"), 1, 1000, 1);
+		obs_module_text("ChatlogMode.Lines"), 1, 1000, 1);
 	obs_property_set_visible(prop, false);
 	// obs_properties_add_int(props, "custom_width",
 	// 	obs_module_text("CustomWidth"), 0, 4096, 1);

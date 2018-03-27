@@ -85,6 +85,7 @@ if(STANDALONE_PLUGIN)
 	install(DIRECTORY data/common/ DESTINATION data/obs-plugins/text-pango)
 	# Platform specific data, like fontconfig in win32
 	if(WIN32)
+		install(FILES $<TARGET_PDB_FILE:${PROJECT_NAME}> DESTINATION obs-plugins/64bit/ OPTIONAL)
 		install(DIRECTORY data/win32/ DESTINATION data/obs-plugins/text-pango)
 	endif()
 else()
