@@ -35,7 +35,9 @@ OBS_MODULE_USE_DEFAULT_LOCALE("text-pango", "en-US")
 
 
 #define FILE_CHECK_TIMEOUT_SEC 1.0
+#ifndef max
 #define max(a,b) (a > b ? a : b)
+#endif
 
 
 // Render fails after about 600 characters
@@ -488,9 +490,9 @@ bool obs_module_load()
 	FcBool complain = true;
 #if _WIN32
 	const char *path = obs_get_module_data_path(obs_current_module());
-	const char *abs_path = os_get_abs_path_ptr(path);
-	const char *tmplt_config_path = obs_module_file("fonts.conf");
-	const char *tmplt_config = os_quick_read_utf8_file(tmplt_config_path);
+	char *abs_path = os_get_abs_path_ptr(path);
+	char *tmplt_config_path = obs_module_file("fonts.conf");
+	char *tmplt_config = os_quick_read_utf8_file(tmplt_config_path);
 	struct dstr config_buf = {0};
 	dstr_copy(&config_buf, tmplt_config);
 	dstr_replace(&config_buf, "${plugin_path}", abs_path);
