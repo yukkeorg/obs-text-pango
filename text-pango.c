@@ -372,16 +372,16 @@ static void pango_video_tick(void *data, float seconds)
 		src->file_last_checked += seconds;
 		if (src->file_last_checked > FILE_CHECK_TIMEOUT_SEC) {
 			src->file_last_checked = 0.0;
-			struct stat stat = {0};
-			os_stat(src->text_file, &stat);
-			if (src->file_timestamp != stat.st_mtime) {
+			struct stat stat_s = {0};
+			os_stat(src->text_file, &stat_s);
+			if (src->file_timestamp != stat_s.st_mtime) {
 				char *read_file = NULL;
 				if (read_from_end(&read_file, src->text_file, src->log_lines)) {
 					if (src->text) {
 						bfree(src->text);
 					}
 					src->text = read_file;
-					src->file_timestamp = stat.st_mtime;
+					src->file_timestamp = stat_s.st_mtime;
 					render_text(src);
 				}
 			}
@@ -443,9 +443,9 @@ static void pango_source_update(void *data, obs_data_t *settings)
 		if (!read_from_end(&(src->text), src->text_file, src->log_lines)) {
 			src->text = bstrdup(obs_data_get_string(settings, "text"));
 		} else {
-			struct stat stat = {0};
-			os_stat(src->text_file, &stat);
-			src->file_timestamp = stat.st_mtime;
+			struct stat stat_s = {0};
+			os_stat(src->text_file, &stat_s);
+			src->file_timestamp = stat_s.st_mtime;
 		}
 	} else {
 		src->text = bstrdup(obs_data_get_string(settings, "text"));

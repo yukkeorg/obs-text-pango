@@ -44,7 +44,11 @@ include_directories(
 	${CAIRO_INCLUDE_DIRS}
 	${PANGOCAIRO_INCLUDE_DIRS}
 	${FREETYPE_INCLUDE_DIRS})
-link_directories("D:/projects/text-rendering/build_release/install/lib")
+
+link_directories(
+	${PANGO_LIBRARY_DIRS}
+	${CAIRO_LIBRARY_DIRS}
+	${FREETYPE_LIBRARY_DIRS})
 
 set(text-pango_SOURCES
 	text-pango.c
