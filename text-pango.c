@@ -171,11 +171,13 @@ void render_text(struct pango_source *src)
 	} while (pango_layout_iter_next_line(iter));
 	pango_layout_iter_free(iter);
 
-	// blog(LOG_WARNING,"[pango]: Creating texture of dim (%i,%i)", src->width, src->height);
 	obs_enter_graphics();
 	src->tex = gs_texture_create(src->width, src->height, GS_BGRA, 1,
 			(const uint8_t **) &surface_data, 0);
 	obs_leave_graphics();
+	if(!src->tex) {
+		blog(LOG_ERROR,"[pango]: Failed creating texture of dim (%i,%i)", src->width, src->height);
+	}
 
 	/* Clean up */
 	bfree(surface_data);
@@ -331,6 +333,9 @@ static void pango_source_destroy(void *data)
 	if (src->font_name != NULL)
 		bfree(src->font_name);
 
+	if (src->text_file != NULL)
+		bfree(src->text_file);
+
 	obs_enter_graphics();
 
 	if (src->tex != NULL) {
@@ -366,11 +371,9 @@ static void pango_video_tick(void *data, float seconds)
 		src->file_last_checked += seconds;
 		if (src->file_last_checked > FILE_CHECK_TIMEOUT_SEC) {
 			src->file_last_checked = 0.0;
-			blog(LOG_INFO, "Stat'ing file");
 			struct stat stat = {0};
 			os_stat(src->text_file, &stat);
 			if (src->file_timestamp != stat.st_mtime) {
-				blog(LOG_INFO, "File changed, reloading");
 				char *read_file = NULL;
 				if (read_from_end(&read_file, src->text_file, src->log_lines)) {
 					if (src->text) {
@@ -404,7 +407,7 @@ static void pango_source_update(void *data, obs_data_t *settings)
 
 	src->vertical = obs_data_get_bool(settings, "vertical");
 	src->align = (int)obs_data_get_int(settings, "align");
-	src->v_align = (int)obs_data_get_int(settings, "vertical_align");
+	// src->v_align = (int)obs_data_get_int(settings, "vertical_align");
 
 	src->gradient = obs_data_get_bool(settings, "gradient");
 	src->color[0] = (uint32_t)obs_data_get_int(settings, "color1");
@@ -424,9 +427,6 @@ static void pango_source_update(void *data, obs_data_t *settings)
 
 	src->log_mode = obs_data_get_bool(settings, "log_mode");
 	src->log_lines = (uint32_t)obs_data_get_int(settings, "log_lines");
-	// WHY WHY WHY WHY
-	// src->custom_width = (uint32_t)obs_data_get_int(settings, "custom_width");
-	// src->word_wrap = obs_data_get_bool(settings, "word_wrap");
 
 	src->file_timestamp = 0;
 	src->file_last_checked = 0.0;
@@ -437,6 +437,7 @@ static void pango_source_update(void *data, obs_data_t *settings)
 			bfree(src->text_file);
 			src->text_file = NULL;
 		}
+
 		src->text_file = bstrdup(obs_data_get_string(settings, "text_file"));
 		if (!read_from_end(&(src->text), src->text_file, src->log_lines)) {
 			src->text = bstrdup(obs_data_get_string(settings, "text"));
@@ -486,17 +487,18 @@ bool obs_module_load()
 	FcConfig *config = FcConfigCreate();
 	FcBool complain = true;
 #if _WIN32
-	// Fontconfig plz why do you do such magic to my paths
 	const char *path = obs_get_module_data_path(obs_current_module());
 	const char *abs_path = os_get_abs_path_ptr(path);
-	// bfree(path);
 	const char *tmplt_config_path = obs_module_file("fonts.conf");
 	const char *tmplt_config = os_quick_read_utf8_file(tmplt_config_path);
-	// bfree(tmplt_config_path);
 	struct dstr config_buf = {0};
 	dstr_copy(&config_buf, tmplt_config);
-	// bfree(tmplt_config);
 	dstr_replace(&config_buf, "${plugin_path}", abs_path);
+
+	bfree(tmplt_config);
+	bfree(tmplt_config_path);
+	bfree(abs_path);
+
 	if (FcConfigParseAndLoadFromMemory(config, config_buf.array, complain) != FcTrue) {
 #else
 	if (FcConfigParseAndLoad(config, NULL, complain) != FcTrue) {
@@ -510,7 +512,9 @@ bool obs_module_load()
 	}
 	FcConfigSetCurrent(config);
 	FcConfigBuildFonts(config);
-	// dstr_free(&config_buf);
+#if _WIN32
+		dstr_free(&config_buf);
+#endif
 	return true;
 }
 
