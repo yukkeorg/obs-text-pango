@@ -41,8 +41,8 @@ static void get_rendered_text_size(PangoLayout *layout, int *width, int *height)
 
 	pango_layout_get_size (layout, &w, &h);
 	/* Divide by pango scale to get dimensions in pixels */
-	*width = w / PANGO_SCALE;
-	*height = h / PANGO_SCALE;
+	*width = PANGO_PIXELS_FLOOR(w);
+	*height = PANGO_PIXELS_FLOOR(h);
 }
 
 static void set_font(struct pango_source *src, PangoLayout *layout) {
@@ -50,7 +50,7 @@ static void set_font(struct pango_source *src, PangoLayout *layout) {
 
 	desc = pango_font_description_new ();
 	pango_font_description_set_family(desc, src->font_name);
-	pango_font_description_set_size(desc, src->font_size * PANGO_SCALE);
+	pango_font_description_set_size(desc, (src->font_size * PANGO_SCALE * 2)/3); // Scaling to approximate GDI text pts
 	pango_font_description_set_weight(desc, !!(src->font_flags & OBS_FONT_BOLD) ? PANGO_WEIGHT_BOLD : 0);
 	pango_font_description_set_style(desc, !!(src->font_flags & OBS_FONT_ITALIC) ? PANGO_STYLE_ITALIC : 0);
 	pango_layout_set_font_description(layout, desc);
