@@ -153,7 +153,6 @@ static bool read_from_end(char **dst_buf, const char *filename, const int n_line
 {
 	FILE *tmp_file = NULL;
 	uint32_t filesize = 0, cur_pos = 0;
-	char *tmp_read = NULL;
 	uint16_t value = 0, line_breaks = 0;
 	size_t bytes_read;
 	char bvalue;
@@ -167,7 +166,7 @@ static bool read_from_end(char **dst_buf, const char *filename, const int n_line
 	}
 	bytes_read = fread(&value, 2, 1, tmp_file);
 
-	if (bytes_read == 2 && value == 0xFEFF) // Fails on alternate endianness
+	if (bytes_read == 2 && (value == 0xFEFF || value == 0xFFFE))
 		utf16 = true;
 
 	fseek(tmp_file, 0, SEEK_END);
@@ -196,22 +195,20 @@ static bool read_from_end(char **dst_buf, const char *filename, const int n_line
 
 	fseek(tmp_file, cur_pos, SEEK_SET);
 
-	// if (utf16) {
-	// 	bytes_read = fread(*dst_buf, (filesize - cur_pos), 1,
-	// 			tmp_file);
+	if (utf16) {
+		wchar_t *tmp_buf = bzalloc(filesize - cur_pos);
 
-	// 	*dst_buf = bzalloc(filesize - cur_pos);
-	// 	os_wcs_to_utf8(tmp_read, strlen(tmp_read),
-	// 		*dst_buf, (filesize - cur_pos));
+		bytes_read = fread(tmp_buf, (filesize - cur_pos), 1,
+				tmp_file);
+
+		os_wcs_to_utf8_ptr(tmp_buf, bytes_read, dst_buf);
+		bfree(tmp_buf);
+	} else {
+		*dst_buf = bzalloc(filesize - cur_pos + 1);
+		bytes_read = fread(*dst_buf, filesize - cur_pos, 1, tmp_file);
+		(*dst_buf)[filesize - cur_pos] = 0;
+	}
 	
-	// 	bfree(tmp_read);
-	// 	fclose(tmp_file);
-	// 	return true;
-	// }
-
-	*dst_buf = bzalloc(filesize - cur_pos + 1);
-	bytes_read = fread(*dst_buf, filesize - cur_pos, 1, tmp_file);
-	(*dst_buf)[filesize - cur_pos] = 0;
 	fclose(tmp_file);
 	return true;
 }
