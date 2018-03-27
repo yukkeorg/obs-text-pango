@@ -21,11 +21,11 @@ Current Features
 * Read from file
   * Chat log mode (Last X lines from file)
   * Reload on changes
-
-Unimplemented features
-----------------------
-* UTF-16 file support
 * Opacity
+
+Unfixed Bugs
+------------
+* UTF-16 file support
 
 Considering Features
 ----------------
