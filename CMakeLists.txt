@@ -83,20 +83,31 @@ target_compile_definitions(text-pango PRIVATE ${CAIRO_C_FLAGS})
 
 
 if(STANDALONE_PLUGIN)
-	install(TARGETS text-pango 
-		LIBRARY DESTINATION obs-plugins/64bit/
-	)
-	install(DIRECTORY data/common/ DESTINATION data/obs-plugins/text-pango)
-	# Platform specific data, like fontconfig in win32
-	if(WIN32)
-		install(FILES $<TARGET_PDB_FILE:${PROJECT_NAME}> DESTINATION obs-plugins/64bit/ OPTIONAL)
-		install(DIRECTORY data/win32/ DESTINATION data/obs-plugins/text-pango)
+	if(APPLE)
+		install(TARGETS text-pango
+			LIBRARY DESTINATION bin/)
+		install(DIRECTORY data/common/
+			DESTINATION data)
+		# for packaging, copy all dependencies, change dependency links
+		# run pkgbuild --identifier user.obsproject.kurufu.text-pango --root ./obs-text-pango-install/ text-pango-mac.pkg
+	else() # Not apple so normal layout
+		install(TARGETS text-pango 
+			LIBRARY DESTINATION obs-plugins/64bit/)
+		install(DIRECTORY data/common/
+			DESTINATION data/obs-plugins/text-pango)
+		# Platform specific data, like fontconfig in win32
+		if(WIN32)
+			install(FILES $<TARGET_PDB_FILE:${PROJECT_NAME}>
+				DESTINATION obs-plugins/64bit/ OPTIONAL)
+			install(DIRECTORY data/win32/
+				DESTINATION data/obs-plugins/text-pango)
+		endif()
 	endif()
 else()
 	install_obs_plugin_with_data(text-pango data/common)
+	# calling this twince might not work?
 	if(WIN32)
 		install_obs_plugin_with_data(text-pango data/win32)
 	endif()
-
 endif()
 
