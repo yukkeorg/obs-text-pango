@@ -131,6 +131,7 @@ void render_text(struct pango_source *src)
 		int xpos = xoffset + rect.x / PANGO_SCALE;
 		int ypos = yoffset + baseline / PANGO_SCALE;
 
+		cairo_push_group(render_context); // required for our drop shadow hack >.>
 		/* Draw the drop shadow */
 		if (drop_shadow_offset > 0) {
 			cairo_move_to(render_context,
@@ -138,8 +139,13 @@ void render_text(struct pango_source *src)
 					ypos + drop_shadow_offset);
 			cairo_set_source_rgba(render_context,
 					RGBA_CAIRO(src->drop_shadow_color));
-			pango_cairo_layout_line_path(render_context, line);
+			pango_cairo_show_layout_line(render_context, line);
 			cairo_fill(render_context);
+			cairo_set_operator(render_context, CAIRO_OPERATOR_IN);
+			cairo_set_source_rgba(render_context,
+					RGBA_CAIRO(src->drop_shadow_color));
+			cairo_paint(render_context);
+			cairo_set_operator(render_context, CAIRO_OPERATOR_SOURCE);
 		}
 
 		/* Draw text with outline */
@@ -171,6 +177,9 @@ void render_text(struct pango_source *src)
 
 		cairo_move_to(render_context, xpos, ypos);
 		pango_cairo_show_layout_line(render_context, line);
+
+		cairo_pop_group_to_source(render_context); // required for our drop shadow hack >.>
+		cairo_paint(render_context);
 	} while (pango_layout_iter_next_line(iter));
 	pango_layout_iter_free(iter);
 
