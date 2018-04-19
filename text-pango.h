@@ -16,7 +16,6 @@ struct pango_source {
 	bool from_file;
 	char *text;
 	char *text_file;
-	char *encoding;
 
 	char *font_name;
 	uint16_t font_size;
@@ -42,6 +41,10 @@ struct pango_source {
 	uint32_t log_lines;
 	uint32_t custom_width;
 	bool word_wrap;
+
+	char *encoding;
+
+	char *lang;
 
 	/* State */
 	gs_texture_t *tex;
