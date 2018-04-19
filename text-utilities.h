@@ -239,14 +239,19 @@ static bool read_from_end(char **dst_buf, size_t *size, uint8_t *utf_encoding, c
 	filesize = (uint32_t)ftell(file);
 	cur_pos = filesize;
 
+	bool trailing_ln_checked = false;
 	while (line_breaks <= lines && cur_pos != 0) {
 		cur_pos -= alignment;
 		fseek(file, cur_pos, SEEK_SET);
 
 		bytes_read = fread(bytes, 1, alignment, file);
 		if(bytes_read == alignment && strncmp(bytes, encoding_ln[encoding], alignment) == 0) {
-			line_breaks++;
+			if (trailing_ln_checked)
+				line_breaks++;
+			else
+				filesize -= alignment;
 		}
+		trailing_ln_checked = true;
 	}
 
 	// If we are not at the end shift past the newline, otherwise shift off the header
