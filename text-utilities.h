@@ -74,6 +74,16 @@ static void set_halignment(struct pango_source *src, PangoLayout *layout) {
 	pango_layout_set_alignment(layout, pangoAlignment);
 }
 
+static void set_lang(struct pango_source *src, PangoLayout *layout) {
+	PangoLanguage *pangoLang;
+
+	if (src->lang) {
+		pangoLang = pango_language_from_string(src->lang);
+		if(pangoLang)
+			pango_context_set_language(pango_layout_get_context(layout), pangoLang);
+	}
+}
+
 static bool pango_source_properties_outline_changed(obs_properties_t *props,
 		obs_property_t *property, obs_data_t *settings)
 {
@@ -129,6 +139,20 @@ static bool pango_source_properties_encoding_changed(obs_properties_t *props,
 	bool enabled = obs_data_get_bool(settings, "encoding.enable");
 
 	prop = obs_properties_get(props, "encoding.name");
+	obs_property_set_visible(prop, enabled);
+
+	return true;
+}
+
+static bool pango_source_properties_lang_changed(obs_properties_t *props,
+		obs_property_t *property, obs_data_t *settings)
+{
+	UNUSED_PARAMETER(property);
+	obs_property_t *prop;
+
+	bool enabled = obs_data_get_bool(settings, "lang.enable");
+
+	prop = obs_properties_get(props, "lang.code");
 	obs_property_set_visible(prop, enabled);
 
 	return true;

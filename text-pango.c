@@ -82,6 +82,7 @@ void render_text(struct pango_source *src)
 
 	set_font(src, layout);
 	set_halignment(src, layout);
+	set_lang(src, layout);
 
 	pango_layout_set_text(layout, src->text, -1);
 
@@ -331,6 +332,14 @@ static obs_properties_t *pango_source_get_properties(void *unused)
 		obs_module_text("Encoding.Name"), OBS_TEXT_DEFAULT);
 	obs_property_set_visible(prop, false);
 
+	prop = obs_properties_add_bool(props, "lang.enable",
+		obs_module_text("Lang.Enable"));
+	obs_property_set_modified_callback(prop,
+		pango_source_properties_lang_changed);
+	prop = obs_properties_add_text(props, "lang.code",
+		obs_module_text("Lang.Code"), OBS_TEXT_DEFAULT);
+	obs_property_set_visible(prop, false);
+
 	return props;
 }
 
@@ -420,6 +429,13 @@ static void pango_source_update(void *data, obs_data_t *settings)
 	}
 	if(obs_data_get_bool(settings, "encoding.enable"))
 		src->encoding = bstrdup(obs_data_get_string(settings, "encoding.name"));
+
+	if(src->lang) {
+		bfree(src->lang);
+		src->lang = NULL;
+	}
+	if(obs_data_get_bool(settings, "lang.enable"))
+		src->lang = bstrdup(obs_data_get_string(settings, "lang.code"));
 
 	src->gradient = obs_data_get_bool(settings, "gradient");
 	src->color[0] = (uint32_t)obs_data_get_int(settings, "color1");
