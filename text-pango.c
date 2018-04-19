@@ -120,12 +120,13 @@ void render_text(struct pango_source *src)
 	do {
 		PangoLayoutLine *line;
 		PangoRectangle rect;
+		PangoRectangle paint_rect;
 		int y1, y2;
 		cairo_pattern_t *pattern;
 
 		line = pango_layout_iter_get_line_readonly(iter);
 
-		pango_layout_iter_get_line_extents(iter, NULL, &rect);
+		pango_layout_iter_get_line_extents(iter, &paint_rect, &rect);
 		int baseline = pango_layout_iter_get_baseline(iter);
 		int xpos = xoffset + rect.x / PANGO_SCALE;
 		int ypos = yoffset + baseline / PANGO_SCALE;
@@ -156,8 +157,8 @@ void render_text(struct pango_source *src)
 		/* Handle Gradienting source by line */
 		pango_layout_iter_get_line_yrange(iter, &y1, &y2);
 		pattern = cairo_pattern_create_linear(
-				0, y1 / PANGO_SCALE + yoffset,
-				0, y2 / PANGO_SCALE + yoffset);
+				0, paint_rect.y / PANGO_SCALE + yoffset,
+				0, (paint_rect.y+paint_rect.height) / PANGO_SCALE + yoffset);
 		cairo_pattern_set_extend(pattern, CAIRO_EXTEND_NONE);
 		cairo_pattern_add_color_stop_rgba(pattern, 0.0,
 				RGBA_CAIRO(src->color[0]));
@@ -232,6 +233,8 @@ static void pango_source_get_defaults(obs_data_t *settings)
 
 	obs_data_set_default_int(settings, "log_lines", 6);
 
+	obs_data_set_default_string(settings, "encoding.name", "UTF-8");
+
 }
 
 static obs_properties_t *pango_source_get_properties(void *unused)
@@ -277,16 +280,6 @@ static obs_properties_t *pango_source_get_properties(void *unused)
 	obs_property_list_add_int(prop,
 		obs_module_text("Alignment.Center"), ALIGN_CENTER);
 
-	// prop = obs_properties_add_list(props, "vertical_align",
-	// 	obs_module_text("Vertical Alignment"), OBS_COMBO_TYPE_LIST,
-	// 	OBS_COMBO_FORMAT_INT);
-	// obs_property_list_add_int(prop,
-	// 	obs_module_text("Top"), ALIGN_TOP);
-	// obs_property_list_add_int(prop,
-	// 	obs_module_text("Bottom"), ALIGN_BOTTOM);
-	// obs_property_list_add_int(prop,
-	// 	obs_module_text("Center"), ALIGN_CENTER);
-
 	prop = obs_properties_add_bool(props, "outline",
 		obs_module_text("Outline"));
 	obs_property_set_modified_callback(prop,
@@ -320,6 +313,14 @@ static obs_properties_t *pango_source_get_properties(void *unused)
 	// 	obs_module_text("CustomWidth"), 0, 4096, 1);
 	// obs_properties_add_bool(props, "word_wrap",
 	// 	obs_module_text("WordWrap"));
+
+	prop = obs_properties_add_bool(props, "encoding.enable",
+		obs_module_text("Encoding.Enable"));
+	obs_property_set_modified_callback(prop,
+		pango_source_properties_encoding_changed);
+	prop = obs_properties_add_text(props, "encoding.name",
+		obs_module_text("Encoding.Name"), OBS_TEXT_DEFAULT);
+	obs_property_set_visible(prop, false);
 
 	return props;
 }
@@ -375,12 +376,7 @@ static void pango_video_tick(void *data, float seconds)
 			struct stat stat_s = {0};
 			os_stat(src->text_file, &stat_s);
 			if (src->file_timestamp != stat_s.st_mtime) {
-				char *read_file = NULL;
-				if (read_from_end(&read_file, src->text_file, src->log_lines)) {
-					if (src->text) {
-						bfree(src->text);
-					}
-					src->text = read_file;
+				if (read_textfile(src)) {
 					src->file_timestamp = stat_s.st_mtime;
 					render_text(src);
 				}
@@ -408,7 +404,13 @@ static void pango_source_update(void *data, obs_data_t *settings)
 
 	src->vertical = obs_data_get_bool(settings, "vertical");
 	src->align = (int)obs_data_get_int(settings, "align");
-	// src->v_align = (int)obs_data_get_int(settings, "vertical_align");
+
+	if(src->encoding) {
+		bfree(src->encoding);
+		src->encoding = NULL;
+	}
+	if(obs_data_get_bool(settings, "encoding.enable"))
+		src->encoding = bstrdup(obs_data_get_string(settings, "encoding.name"));
 
 	src->gradient = obs_data_get_bool(settings, "gradient");
 	src->color[0] = (uint32_t)obs_data_get_int(settings, "color1");
@@ -440,7 +442,7 @@ static void pango_source_update(void *data, obs_data_t *settings)
 		}
 
 		src->text_file = bstrdup(obs_data_get_string(settings, "text_file"));
-		if (!read_from_end(&(src->text), src->text_file, src->log_lines)) {
+		if (!read_textfile(src)) {
 			src->text = bstrdup(obs_data_get_string(settings, "text"));
 		} else {
 			struct stat stat_s = {0};

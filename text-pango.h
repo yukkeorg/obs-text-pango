@@ -10,11 +10,13 @@ enum {
 	ALIGN_BOTTOM = 4, // Align with gdi/freetype if possible.
 };
 
+
 struct pango_source {
 	/* Config */
 	bool from_file;
 	char *text;
 	char *text_file;
+	char *encoding;
 
 	char *font_name;
 	uint16_t font_size;
