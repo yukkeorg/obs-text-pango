@@ -85,9 +85,9 @@ target_compile_definitions(text-pango PRIVATE ${CAIRO_C_FLAGS})
 if(STANDALONE_PLUGIN)
 	if(APPLE)
 		install(TARGETS text-pango
-			LIBRARY DESTINATION bin/)
+			LIBRARY DESTINATION "Library/Application Support/obs-studio/plugins/libtext-pango/bin/")
 		install(DIRECTORY data/common/
-			DESTINATION data)
+			DESTINATION "Library/Application Support/obs-studio/plugins/libtext-pango/data")
 		# for packaging, copy all dependencies, change dependency links
 		# run pkgbuild --identifier user.obsproject.kurufu.text-pango --root ./obs-text-pango-install/ text-pango-mac.pkg
 	else() # Not apple so normal layout
