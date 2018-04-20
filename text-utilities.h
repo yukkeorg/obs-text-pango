@@ -298,10 +298,9 @@ static bool read_whole_file(char **dst_buf, size_t *size, uint8_t *utf_encoding,
 
 	fseek(file, 0, SEEK_END);
 	len = (size_t)os_ftelli64(file);
+	tmp_buf = bmalloc(len-header_offset+1);
 
 	if (len > 0) {
-		tmp_buf = bmalloc(len-header_offset+1);
-
 		fseek(file, header_offset, SEEK_SET);
 		len = fread(tmp_buf, 1, len-header_offset, file);
 		if (len == 0) {
