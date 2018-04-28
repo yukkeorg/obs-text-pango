@@ -83,6 +83,11 @@ target_compile_definitions(text-pango PRIVATE ${CAIRO_C_FLAGS})
 
 
 if(STANDALONE_PLUGIN)
+	if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+		set(_bit_suffix "64bit/")
+	else()
+		set(_bit_suffix "32bit/")
+	endif()
 	if(APPLE)
 		install(TARGETS text-pango
 			LIBRARY DESTINATION "Library/Application Support/obs-studio/plugins/libtext-pango/bin/")
@@ -92,13 +97,13 @@ if(STANDALONE_PLUGIN)
 		# run pkgbuild --identifier user.obsproject.kurufu.text-pango --root ./obs-text-pango-install/ text-pango-mac.pkg
 	else() # Not apple so normal layout
 		install(TARGETS text-pango 
-			LIBRARY DESTINATION obs-plugins/64bit/)
+			LIBRARY DESTINATION "obs-plugins/${_bit_suffix}/")
 		install(DIRECTORY data/common/
 			DESTINATION data/obs-plugins/text-pango)
 		# Platform specific data, like fontconfig in win32
 		if(WIN32)
 			install(FILES $<TARGET_PDB_FILE:${PROJECT_NAME}>
-				DESTINATION obs-plugins/64bit/ OPTIONAL)
+				DESTINATION "obs-plugins/${_bit_suffix}/" OPTIONAL)
 			install(DIRECTORY data/win32/
 				DESTINATION data/obs-plugins/text-pango)
 		endif()
