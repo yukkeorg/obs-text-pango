@@ -49,8 +49,8 @@ static void get_rendered_text_size(PangoLayout *layout, int *width, int *height)
 static void set_font(struct pango_source *src, PangoLayout *layout) {
 	PangoFontDescription *desc;
 
-	if (src->font_exact) {
-		desc = pango_fc_font_description_from_pattern(src->font_exact->fonts[0], FALSE);
+	if (src->font_from_file) {
+		desc = pango_fc_font_description_from_pattern(src->font_file_patterns->fonts[0], FALSE);
 	} else {
 		desc = pango_font_description_new ();
 		pango_font_description_set_family(desc, src->font_name);
@@ -176,6 +176,24 @@ static bool pango_source_properties_from_file_changed(obs_properties_t *props,
 	file_prop = obs_properties_get(props, "text_file");
 	obs_property_set_visible(text_prop, !enabled);
 	obs_property_set_visible(file_prop, enabled);
+
+	return true;
+}
+
+static bool pango_source_properties_font_from_file_changed(obs_properties_t *props,
+		obs_property_t *property, obs_data_t *settings)
+{
+	UNUSED_PARAMETER(property);
+	obs_property_t *font_prop,*font_file_prop,*font_file_size_p;
+
+	bool enabled = obs_data_get_bool(settings, "font_from_file");
+
+	font_prop = obs_properties_get(props, "font");
+	font_file_prop = obs_properties_get(props, "font_file");
+	font_file_size_p = obs_properties_get(props, "font_file_size");
+	obs_property_set_visible(font_prop, !enabled);
+	obs_property_set_visible(font_file_prop, enabled);
+	obs_property_set_visible(font_file_size_p, enabled);
 
 	return true;
 }
