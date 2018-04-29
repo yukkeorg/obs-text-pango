@@ -225,6 +225,8 @@ static void pango_source_get_defaults(obs_data_t *settings)
 {
 	obs_data_t *font;
 
+	obs_data_set_default_bool(settings, "font_from_file", false);
+
 	font = obs_data_create();
 	obs_data_set_default_string(font, "face", DEFAULT_FACE);
 	obs_data_set_default_int(font, "size", 32);
@@ -232,6 +234,7 @@ static void pango_source_get_defaults(obs_data_t *settings)
 	obs_data_release(font);
 
 
+	obs_data_set_default_bool(settings, "gradient", false);
 	obs_data_set_default_int(settings, "color1", 0xFFFFFFFF);
 	obs_data_set_default_int(settings, "color2", 0xFFFFFFFF);
 
@@ -241,6 +244,7 @@ static void pango_source_get_defaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, "drop_shadow_offset", 4);
 	obs_data_set_default_int(settings, "drop_shadow_color", 0xFF000000);
 
+	obs_data_set_default_bool(settings, "log_mode", false);
 	obs_data_set_default_int(settings, "log_lines", 6);
 
 	obs_data_set_default_string(settings, "encoding.name", "UTF-8");
@@ -255,10 +259,16 @@ static obs_properties_t *pango_source_get_properties(void *unused)
 
 	props = obs_properties_create();
 
-
+	prop = obs_properties_add_bool(props, "font_from_file",
+		obs_module_text("Font.FromFile"));
+	obs_property_set_modified_callback(prop,
+		pango_source_properties_font_from_file_changed);
 	obs_properties_add_path(props, "font_file",
 		obs_module_text("Font.File"), OBS_PATH_FILE,
 		NULL, NULL);
+	obs_properties_add_int(props, "font_file_size",
+		obs_module_text("Font.Size"), 8, 512, 1);
+
 	obs_properties_add_font(props, "font",
 		obs_module_text("Font"));
 	prop = obs_properties_add_bool(props, "from_file",
@@ -411,39 +421,49 @@ static void pango_source_update(void *data, obs_data_t *settings)
 {
 	struct pango_source *src = data;
 	obs_data_t *font;
+	char *font_file =  NULL;
+	
 	if (src->text) {
 		bfree(src->text);
 		src->text = NULL;
 	}
 
-	char *font_file = obs_data_get_string(settings, "font_file"); // Copy not needed, do not free.
-	if (src->font_exact) {
-		FcFontSetDestroy(src->font_exact);
-		src->font_exact = NULL;
-	}
-
-	if (font_file && strcmp(font_file, "") != 0) {
-		if (FcConfigAppFontAddFile(NULL, font_file)) {
-			FcFontSet *font_set = FcFontSetCreate();
-			int count = FcFreeTypeQueryAll(font_file, -1, NULL, &count, font_set);
-			if (count > 0 ) {
-				if (count > 1) {
-					blog(LOG_WARNING, "Specified file(%s) had more than 1 font", font_file);
-				}
-				src->font_exact = font_set;
-			}
-		} else {
-			blog(LOG_WARNING, "Failed to load font: %s", font_file);
-		}
-	}
+	src->font_from_file = obs_data_get_bool(settings, "font_from_file");
 
 	font = obs_data_get_obj(settings, "font");
 	if (src->font_name)
 		bfree(src->font_name);
 	src->font_name  = bstrdup(obs_data_get_string(font, "face"));
-	src->font_size   = (uint16_t)obs_data_get_int(font, "size");
+	if(src->font_from_file) { // Keep sizes synced.
+		src->font_size = (uint16_t)obs_data_get_int(settings, "font_file_size");
+		obs_data_set_int(font, "size", src->font_size);
+	} else {
+		src->font_size   = (uint16_t)obs_data_get_int(font, "size");
+		obs_data_set_int(settings, "font_file_size", src->font_size);
+	}
 	src->font_flags  = (uint32_t)obs_data_get_int(font, "flags");
 	obs_data_release(font);
+
+	font_file = obs_data_get_string(settings, "font_file"); // Copy not needed, do not free.
+	if (src->font_file_patterns) {
+		FcFontSetDestroy(src->font_file_patterns);
+		src->font_file_patterns = NULL;
+	}
+
+	if (src->font_from_file && font_file && strcmp(font_file, "") != 0) {
+		if (FcConfigAppFontAddFile(NULL, font_file)) {
+			FcFontSet *font_set = FcFontSetCreate();
+			int count = FcFreeTypeQueryAll(font_file, -1, NULL, &count, font_set);
+			if (count > 0 ) {
+				src->font_file_patterns = font_set;
+				if (count > 1) {
+					blog(LOG_WARNING, "Specified file(%s) had more than 1 font", font_file);
+				}
+			}
+		} else {
+			blog(LOG_WARNING, "Failed to load font: %s", font_file);
+		}
+	}
 
 	src->vertical = obs_data_get_bool(settings, "vertical");
 	src->align = (int)obs_data_get_int(settings, "align");
