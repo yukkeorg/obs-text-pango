@@ -2,6 +2,7 @@
 
 #include "text-pango.h"
 #include <pango/pangocairo.h>
+#include <pango/pangofc-fontmap.h>
 #include <util/platform.h>
 #include <obs-module.h>
 #include <gmodule.h>

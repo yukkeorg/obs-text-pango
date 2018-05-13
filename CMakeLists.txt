@@ -32,6 +32,7 @@ endif()
 find_package(Pango REQUIRED)
 find_package(Cairo REQUIRED)
 find_package(Pangocairo REQUIRED)
+find_package(Pangoft2 REQUIRED)
 if(WIN32)
 	find_package(Pangowin32 REQUIRED)
 endif()
@@ -43,6 +44,7 @@ include_directories(
 	${PANGO_INCLUDE_DIRS}
 	${CAIRO_INCLUDE_DIRS}
 	${PANGOCAIRO_INCLUDE_DIRS}
+	${PANGOFT2_INCLUDE_DIRS}
 	${FREETYPE_INCLUDE_DIRS})
 
 link_directories(
@@ -76,6 +78,7 @@ target_link_libraries(text-pango
 	${PANGO_LIBRARIES}
 	${PANGOWIN32_LIBRARIES}
 	${PANGOCAIRO_LIBRARIES}
+	${PANGOFT2_LIBRARIES}
 	${FREETYPE_LIBRARIES}
 	${FONTCONFIG_LIBRARIES}
 	${PLATFORM_LIBRARIES}) # win only currently
