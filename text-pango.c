@@ -35,12 +35,11 @@ OBS_MODULE_USE_DEFAULT_LOCALE("text-pango", "en-US")
 
 
 #define FILE_CHECK_TIMEOUT_SEC 1.0
+#define MAX_TEXTURE_SIZE 4096
 #ifndef max
 #define max(a,b) (a > b ? a : b)
 #endif
 
-
-// Render fails after about 600 characters
 void render_text(struct pango_source *src)
 {
 	cairo_t *layout_context;
@@ -48,7 +47,6 @@ void render_text(struct pango_source *src)
 	cairo_surface_t *surface;
 	uint8_t *surface_data = NULL;
 	PangoLayout *layout;
-	int text_width, text_height;
 
 	//Clear any old textures
 	if (src->tex) {
@@ -87,28 +85,42 @@ void render_text(struct pango_source *src)
 	pango_layout_set_text(layout, src->text, -1);
 
 	/* Get text dimensions and create a context to render to */
-	get_rendered_text_size(layout, &text_width, &text_height); // Requires double paint
-	src->width = text_width;
-	src->width += outline_width;
-	src->width += max(outline_width, drop_shadow_offset);
-	src->height = text_height;
-	src->height += outline_width;
-	src->height += max(outline_width, drop_shadow_offset);
+	int text_height = 0; int text_width = 0;
+	PangoRectangle log_rect; PangoRectangle ink_rect;
+	PangoLayoutIter *sizing_iter = pango_layout_get_iter(layout);
+	do {
+		pango_layout_iter_get_line_extents(sizing_iter, &ink_rect, &log_rect);
+		int new_h = text_height+PANGO_PIXELS_FLOOR(log_rect.height); // May be too conservative, but looks good in arial
+		int new_w = max(text_width, PANGO_PIXELS_FLOOR(max(0, ink_rect.x) + ink_rect.width));
+		if(new_h + outline_width + max(outline_width, drop_shadow_offset) > MAX_TEXTURE_SIZE
+		|| new_w + outline_width + max(outline_width, drop_shadow_offset) > MAX_TEXTURE_SIZE)  {
+			break; // If this line would put us over max texture.
+		}
+		text_height = new_h;
+		text_width = new_w;
+	} while (pango_layout_iter_next_line(sizing_iter));
+	pango_layout_iter_free(sizing_iter);
+	text_height += outline_width + max(outline_width, drop_shadow_offset);
+	text_width += outline_width + max(outline_width, drop_shadow_offset);
+
+	/* Set source dimensions */
 	if (src->vertical) {
-		int tmp = src->width;
-		src->width = src->height;
-		src->height = tmp;
+		src->height = text_width;
+		src->width = text_height;
+	} else {
+		src->height = text_height;
+		src->width = text_width;
 	}
 
-	render_context = create_render_context(src, &surface, &surface_data);
-
-	double xoffset = 0;
-	xoffset += outline_width;
-
-	double yoffset = 0;
-	yoffset += outline_width;
+	/* Allocate and initialize Cairo surface */
+	int stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, src->width);
+	surface_data = bzalloc(stride * src->height);
+	surface = cairo_image_surface_create_for_data(surface_data,
+			CAIRO_FORMAT_ARGB32,
+			src->width, src->height, stride);
 
 	/* Change to render context */
+	render_context = cairo_create(surface);
 	pango_cairo_update_layout(render_context, layout);
 
 	/* Transform coordinates and move origin for vertical text */
@@ -117,6 +129,8 @@ void render_text(struct pango_source *src)
 		cairo_rotate(render_context, (M_PI*0.5));
 	}
 
+	int xoffset = outline_width;
+	int yoffset = outline_width;
 	PangoLayoutIter *iter = pango_layout_get_iter(layout);
 	do {
 		PangoLayoutLine *line;
@@ -129,10 +143,13 @@ void render_text(struct pango_source *src)
 
 		pango_layout_iter_get_line_extents(iter, &paint_rect, &rect);
 		int baseline = pango_layout_iter_get_baseline(iter);
-		int xpos = xoffset + rect.x / PANGO_SCALE;
-		int ypos = yoffset + baseline / PANGO_SCALE;
+		int xpos = xoffset + PANGO_PIXELS_FLOOR(rect.x);
+		int ypos = yoffset + PANGO_PIXELS_FLOOR(baseline);
 
-		cairo_push_group(render_context); // required for our drop shadow hack >.>
+		if(ypos > MAX_TEXTURE_SIZE || PANGO_PIXELS_FLOOR(rect.width) > MAX_TEXTURE_SIZE)
+			break; // If this line would put us over max texture.
+
+		cairo_push_group(render_context); // Render lines independently via groups.
 		/* Draw the drop shadow */
 		if (drop_shadow_offset > 0) {
 			cairo_move_to(render_context,
@@ -146,7 +163,6 @@ void render_text(struct pango_source *src)
 			cairo_set_source_rgba(render_context,
 					RGBA_CAIRO(src->drop_shadow_color));
 			cairo_paint(render_context);
-			cairo_set_operator(render_context, CAIRO_OPERATOR_SOURCE);
 		}
 
 		/* Draw text with outline */
@@ -162,11 +178,12 @@ void render_text(struct pango_source *src)
 		}
 
 		/* Handle Gradienting source by line */
+		cairo_set_operator(render_context, CAIRO_OPERATOR_SOURCE);
 		pango_layout_iter_get_line_yrange(iter, &y1, &y2);
 		pattern = cairo_pattern_create_linear(
-				0, paint_rect.y / PANGO_SCALE + yoffset,
-				0, (paint_rect.y+paint_rect.height) / PANGO_SCALE + yoffset);
-		cairo_pattern_set_extend(pattern, CAIRO_EXTEND_NONE);
+				0, PANGO_PIXELS_FLOOR(paint_rect.y) + yoffset,
+				0, PANGO_PIXELS_FLOOR(paint_rect.y+paint_rect.height) + yoffset);
+		cairo_pattern_set_extend(pattern, CAIRO_EXTEND_PAD);
 		cairo_pattern_add_color_stop_rgba(pattern, 0.0,
 				RGBA_CAIRO(src->color[0]));
 		cairo_pattern_add_color_stop_rgba(pattern, 1.0,
@@ -179,7 +196,7 @@ void render_text(struct pango_source *src)
 		cairo_move_to(render_context, xpos, ypos);
 		pango_cairo_show_layout_line(render_context, line);
 
-		cairo_pop_group_to_source(render_context); // required for our drop shadow hack >.>
+		cairo_pop_group_to_source(render_context); // Use isolated line as source for final texture
 		cairo_paint(render_context);
 	} while (pango_layout_iter_next_line(iter));
 	pango_layout_iter_free(iter);
@@ -429,6 +446,7 @@ static void pango_source_update(void *data, obs_data_t *settings)
 	}
 
 	src->font_from_file = obs_data_get_bool(settings, "font_from_file");
+	src->font_file = obs_data_get_string(settings, "font_file"); // Copy not needed, do not free.
 
 	font = obs_data_get_obj(settings, "font");
 	if (src->font_name)
@@ -444,26 +462,6 @@ static void pango_source_update(void *data, obs_data_t *settings)
 	src->font_flags  = (uint32_t)obs_data_get_int(font, "flags");
 	obs_data_release(font);
 
-	font_file = obs_data_get_string(settings, "font_file"); // Copy not needed, do not free.
-	if (src->font_file_patterns) {
-		FcFontSetDestroy(src->font_file_patterns);
-		src->font_file_patterns = NULL;
-	}
-
-	if (src->font_from_file && font_file && strcmp(font_file, "") != 0) {
-		if (FcConfigAppFontAddFile(NULL, font_file)) {
-			FcFontSet *font_set = FcFontSetCreate();
-			int count = FcFreeTypeQueryAll(font_file, -1, NULL, &count, font_set);
-			if (count > 0 ) {
-				src->font_file_patterns = font_set;
-				if (count > 1) {
-					blog(LOG_WARNING, "Specified file(%s) had more than 1 font", font_file);
-				}
-			}
-		} else {
-			blog(LOG_WARNING, "Failed to load font: %s", font_file);
-		}
-	}
 
 	src->vertical = obs_data_get_bool(settings, "vertical");
 	src->align = (int)obs_data_get_int(settings, "align");
@@ -577,7 +575,7 @@ bool obs_module_load()
 	if (FcConfigParseAndLoad(config, NULL, complain) != FcTrue) {
 #endif
 		FcConfigDestroy(config);
-		blog(LOG_ERROR, "Failed to load fontconfig");
+		blog(LOG_ERROR, "[pango] Failed to load fontconfig");
 #if _WIN32
 		dstr_free(&config_buf);
 #endif
@@ -593,4 +591,5 @@ bool obs_module_load()
 
 void obs_module_unload(void)
 {
+	FcConfigAppFontClear(NULL);
 }
