@@ -18,8 +18,7 @@ struct pango_source {
 	char *text_file;
 
 	bool font_from_file;
-	char *font_file;
-	FcFontSet *font_file_patterns;
+	const char *font_file; // direct from QT
 
 	char *font_name;
 	uint16_t font_size;

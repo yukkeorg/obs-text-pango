@@ -25,33 +25,25 @@ cairo_t *create_layout_context()
 	return context;
 }
 
-cairo_t *create_render_context(struct pango_source *src,
-	cairo_surface_t **surface, uint8_t **surface_data)
-{
-	*surface_data = bzalloc(src->width * src->height * 4);
-	*surface = cairo_image_surface_create_for_data(*surface_data,
-			CAIRO_FORMAT_ARGB32,
-			src->width, src->height, 4 * src->width);
-
-	return cairo_create(*surface);
-}
-
-static void get_rendered_text_size(PangoLayout *layout, int *width, int *height)
-{
-	int w, h;
-
-	pango_layout_get_size (layout, &w, &h);
-	/* Divide by pango scale to get dimensions in pixels */
-	*width = PANGO_PIXELS_FLOOR(w);
-	*height = PANGO_PIXELS_FLOOR(h);
-}
-
 static void set_font(struct pango_source *src, PangoLayout *layout) {
-	PangoFontDescription *desc;
+	PangoFontDescription *desc = NULL;
 
-	if (src->font_from_file) {
-		desc = pango_fc_font_description_from_pattern(src->font_file_patterns->fonts[0], FALSE);
-	} else {
+	if (src->font_from_file && src->font_file && strcmp(src->font_file, "") != 0) {
+		if (FcConfigAppFontAddFile(NULL, src->font_file)) {
+			FcFontSet *font_set = FcFontSetCreate();
+			int count = FcFreeTypeQueryAll(src->font_file, -1, NULL, &count, font_set);
+			if (count > 0 ) {
+				desc = pango_fc_font_description_from_pattern(font_set->fonts[0], FALSE);
+				if (count > 1) {
+					blog(LOG_INFO, "[pango] Specified file(%s) had more than 1 font", src->font_file);
+				}
+			}
+		} else {
+			blog(LOG_WARNING, "[pango] Failed to load font: %s", src->font_file);
+		}
+	}
+
+	if (!desc) { // If we havnt loaded a font file, go ahead and load our font name choice.
 		desc = pango_font_description_new ();
 		pango_font_description_set_family(desc, src->font_name);
 		pango_font_description_set_weight(desc, !!(src->font_flags & OBS_FONT_BOLD) ? PANGO_WEIGHT_BOLD : 0);
@@ -222,21 +214,21 @@ char *encoding_ln[4] = {
 static bool read_from_end(char **dst_buf, size_t *size, uint8_t *utf_encoding, const char *filename, int lines)
 {
 	FILE *file = NULL;
-	uint32_t filesize = 0, cur_pos = 0;
+	long filesize = 0; long cur_pos = 0;
 	uint16_t line_breaks = 0;
 	size_t bytes_read;
 
 	uint8_t encoding = 0;
 	char bom[4] = {0, 0, 0, 0};
-	size_t header_offset = 0;
-	size_t alignment = 1;
+	long header_offset = 0;
+	long alignment = 1;
 	uint8_t bytes[2] = {0, 0};
 
 	bool utf16 = false;
 
 	file = os_fopen(filename, "rb");
 	if (file == NULL) {
-		blog(LOG_WARNING, "Failed to open file %s", filename);
+		blog(LOG_WARNING, "[pango] Failed to open file %s", filename);
 		return false;
 	}
 	bytes_read = fread(bom, 1, 3, file);
@@ -257,10 +249,8 @@ static bool read_from_end(char **dst_buf, size_t *size, uint8_t *utf_encoding, c
 		alignment = 2;
 	}
 
-	blog(LOG_WARNING, "enc: %d, ho: %d, align: %d", encoding, header_offset, alignment);
-
 	fseek(file, 0, SEEK_END);
-	filesize = (uint32_t)ftell(file);
+	filesize = ftell(file);
 	cur_pos = filesize;
 
 	bool trailing_ln_checked = false;
@@ -300,11 +290,11 @@ static bool read_whole_file(char **dst_buf, size_t *size, uint8_t *utf_encoding,
 	char *tmp_buf = NULL;
 	char bom[4] = {0, 0, 0, 0};
 	uint8_t encoding = 0;
-	size_t header_offset = 0;
+	long header_offset = 0;
 
 	FILE *file = os_fopen(filename, "rb");
 	if(!file) {
-		blog(LOG_WARNING, "Failed to open file %s", filename);
+		blog(LOG_WARNING, "[pango] Failed to open file %s", filename);
 		return false;
 	}
 	len = fread(bom, 1, 3, file);
@@ -350,12 +340,12 @@ static bool read_textfile(struct pango_source *src)
 
 	if(src->log_mode) {
 		if (!read_from_end(&tmp_buf, &size, &encoding_header, src->text_file, src->log_lines)) {
-			blog(LOG_WARNING, "Failed to read from end of file: %s", src->text_file);
+			blog(LOG_WARNING, "[pango] Failed to read from end of file: %s", src->text_file);
 			return false;
 		}
 	} else {
 		if (!read_whole_file(&tmp_buf, &size, &encoding_header, src->text_file)) {
-			blog(LOG_WARNING, "Failed to read all of file: %s", src->text_file);
+			blog(LOG_WARNING, "[pango] Failed to read all of file: %s", src->text_file);
 			return false;
 		}
 	}
@@ -387,9 +377,9 @@ static bool read_textfile(struct pango_source *src)
 		return true;
 	} else {
 		if (err)
-			blog(LOG_WARNING, "Failed to convert file from: %s, conversion ended at %d. Msg: %s", encoding, conv_size, err->message);
+			blog(LOG_WARNING, "[pango] Failed to convert file from: %s, conversion ended at %d. Msg: %s", encoding, conv_size, err->message);
 		else
-			blog(LOG_WARNING, "Failed to convert file from: %s. Bad g_convert call", encoding);
+			blog(LOG_WARNING, "[pango] Failed to convert file from: %s. Bad g_convert call", encoding);
 	}
 
 	return false;
