@@ -4,13 +4,10 @@
 #include <sys/stat.h>
 #include <math.h>
 
-#if defined (_WIN32) || defined (__APPLE__)
+#include <glib.h>
 // Let us choose the backends even though API compatibilty is not guarenteed
 #define PANGO_ENABLE_BACKEND
-#include <glib.h>
-#endif
 #include <pango/pangocairo.h>
-
 #include <fontconfig/fontconfig.h>
 
 
@@ -61,15 +58,13 @@ void render_text(struct pango_source *src)
 	int outline_width = src->outline ? src->outline_width : 0;
 	int drop_shadow_offset = src->drop_shadow ? src->drop_shadow_offset : 0;
 
-	/* Set fontconfig backend to default */
-	#if defined (_WIN32) || defined (__APPLE__)
+	/* Set fontconfig backend to fontconfig on all platforms */
 	PangoCairoFontMap *map = PANGO_CAIRO_FONT_MAP(pango_cairo_font_map_get_default()); // transfer none, no need to cleanup.
 	if (pango_cairo_font_map_get_font_type(map) != CAIRO_FONT_TYPE_FT ) {
 		PangoCairoFontMap *fc_fontmap = PANGO_CAIRO_FONT_MAP(pango_cairo_font_map_new_for_font_type(CAIRO_FONT_TYPE_FT));
 		pango_cairo_font_map_set_default(fc_fontmap);
 		g_object_unref(fc_fontmap);
 	}
-	#endif
 	/* Create a PangoLayout without manual context */
 	layout_context = create_layout_context();
 	layout = pango_cairo_create_layout(layout_context);
@@ -556,35 +551,32 @@ bool obs_module_load()
 
 	FcConfig *config = FcConfigCreate();
 	FcBool complain = true;
-#ifdef _WIN32
-	const char *path = obs_get_module_data_path(obs_current_module());
-	char *abs_path = os_get_abs_path_ptr(path);
-	char *tmplt_config_path = obs_module_file("fonts.conf");
-	char *tmplt_config = os_quick_read_utf8_file(tmplt_config_path);
-	struct dstr config_buf = {0};
-	dstr_copy(&config_buf, tmplt_config);
-	dstr_replace(&config_buf, "${plugin_path}", abs_path);
+	if (FcConfigParseAndLoad(config, NULL, complain) == FcTrue) {
+		blog(LOG_INFO, "[pango]: Loaded system fontconfig");
+	} else {
+		const char *path = obs_get_module_data_path(obs_current_module());
+		char *abs_path = os_get_abs_path_ptr(path);
+		char *tmplt_config_path = obs_module_file("fonts.conf");
+		char *tmplt_config = os_quick_read_utf8_file(tmplt_config_path);
+		struct dstr config_buf = {0};
+		dstr_copy(&config_buf, tmplt_config);
+		dstr_replace(&config_buf, "${plugin_path}", abs_path);
 
-	bfree(tmplt_config);
-	bfree(tmplt_config_path);
-	bfree(abs_path);
+		bfree(tmplt_config);
+		bfree(tmplt_config_path);
+		bfree(abs_path);
 
-	if (FcConfigParseAndLoadFromMemory(config, config_buf.array, complain) != FcTrue) {
-#else
-	if (FcConfigParseAndLoad(config, NULL, complain) != FcTrue) {
-#endif
-		FcConfigDestroy(config);
-		blog(LOG_ERROR, "[pango] Failed to load fontconfig");
-#ifdef _WIN32
+		if (FcConfigParseAndLoadFromMemory(config, config_buf.array, complain) != FcTrue) {
+			FcConfigDestroy(config);
+			blog(LOG_ERROR, "[pango] Failed to load fontconfig");
+			dstr_free(&config_buf);
+			return false;
+		}
+		blog(LOG_INFO, "[pango] Loaded plugin fontconfig");
 		dstr_free(&config_buf);
-#endif
-		return false;
 	}
 	FcConfigSetCurrent(config);
 	FcConfigBuildFonts(config);
-#ifdef _WIN32
-		dstr_free(&config_buf);
-#endif
 	return true;
 }
 
