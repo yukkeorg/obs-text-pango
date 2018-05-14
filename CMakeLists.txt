@@ -46,7 +46,7 @@ include_directories(
 	${PANGOCAIRO_INCLUDE_DIRS}
 	${PANGOFT2_INCLUDE_DIRS}
 	${FREETYPE_INCLUDE_DIRS})
-if(APPLE)
+if(NOT WIN32)
 	FIND_PACKAGE(PkgConfig)
 	PKG_CHECK_MODULES(GLIB glib-2.0 REQUIRED)
 	include_directories(${GLIB_INCLUDE_DIRS})
@@ -101,6 +101,8 @@ if(STANDALONE_PLUGIN)
 			LIBRARY DESTINATION "Library/Application Support/obs-studio/plugins/libtext-pango/bin/")
 		install(DIRECTORY data/common/
 			DESTINATION "Library/Application Support/obs-studio/plugins/libtext-pango/data")
+		install(DIRECTORY data/apple/
+			DESTINATION "Library/Application Support/obs-studio/plugins/libtext-pango/data")
 		# for packaging, copy all dependencies, change dependency links
 		# run pkgbuild --identifier user.obsproject.kurufu.text-pango --root ./obs-text-pango-install/ text-pango-mac.pkg
 	else() # Not apple so normal layout
@@ -118,9 +120,12 @@ if(STANDALONE_PLUGIN)
 	endif()
 else()
 	install_obs_plugin_with_data(text-pango data/common)
-	# calling this twince might not work?
+	# calling this twice might not work?
 	if(WIN32)
 		install_obs_plugin_with_data(text-pango data/win32)
+	endif()
+	if(APPLE)
+		install_obs_plugin_with_data(text-pango data/apple)
 	endif()
 endif()
 

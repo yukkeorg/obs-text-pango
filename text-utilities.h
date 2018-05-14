@@ -378,7 +378,7 @@ static bool read_textfile(struct pango_source *src)
 		return true;
 	} else {
 		if (err)
-			blog(LOG_WARNING, "[pango] Failed to convert file from: %s, conversion ended at %d. Msg: %s", encoding, conv_size, err->message);
+			blog(LOG_WARNING, "[pango] Failed to convert file from: %s, conversion ended at %lu. Msg: %s", encoding, conv_size, err->message);
 		else
 			blog(LOG_WARNING, "[pango] Failed to convert file from: %s. Bad g_convert call", encoding);
 	}
