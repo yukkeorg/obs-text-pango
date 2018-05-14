@@ -4,15 +4,12 @@
 #include <sys/stat.h>
 #include <math.h>
 
-#ifdef _WIN32
+#if defined (_WIN32) || defined (__APPLE__)
 // Let us choose the backends even though API compatibilty is not guarenteed
 #define PANGO_ENABLE_BACKEND
 #include <glib.h>
-#include <pango/pangocairo.h>
-#include <pango/pangocairo-fc.h>
-#else
-#include <pango/pangocairo.h>
 #endif
+#include <pango/pangocairo.h>
 
 #include <fontconfig/fontconfig.h>
 
@@ -65,10 +62,12 @@ void render_text(struct pango_source *src)
 	int drop_shadow_offset = src->drop_shadow ? src->drop_shadow_offset : 0;
 
 	/* Set fontconfig backend to default */
-	#ifdef _WIN32
-	if (! PANGO_IS_CAIRO_FC_FONT_MAP(pango_cairo_font_map_get_default()) ) {
-		PangoCairoFontMap *fc_fontmap = g_object_new (PANGO_TYPE_CAIRO_FC_FONT_MAP, NULL);
+	#if defined (_WIN32) || defined (__APPLE__)
+	PangoCairoFontMap *map = PANGO_CAIRO_FONT_MAP(pango_cairo_font_map_get_default()); // transfer none, no need to cleanup.
+	if (pango_cairo_font_map_get_font_type(map) != CAIRO_FONT_TYPE_FT ) {
+		PangoCairoFontMap *fc_fontmap = PANGO_CAIRO_FONT_MAP(pango_cairo_font_map_new_for_font_type(CAIRO_FONT_TYPE_FT));
 		pango_cairo_font_map_set_default(fc_fontmap);
+		g_object_unref(fc_fontmap);
 	}
 	#endif
 	/* Create a PangoLayout without manual context */
@@ -557,7 +556,7 @@ bool obs_module_load()
 
 	FcConfig *config = FcConfigCreate();
 	FcBool complain = true;
-#if _WIN32
+#ifdef _WIN32
 	const char *path = obs_get_module_data_path(obs_current_module());
 	char *abs_path = os_get_abs_path_ptr(path);
 	char *tmplt_config_path = obs_module_file("fonts.conf");
@@ -576,14 +575,14 @@ bool obs_module_load()
 #endif
 		FcConfigDestroy(config);
 		blog(LOG_ERROR, "[pango] Failed to load fontconfig");
-#if _WIN32
+#ifdef _WIN32
 		dstr_free(&config_buf);
 #endif
 		return false;
 	}
 	FcConfigSetCurrent(config);
 	FcConfigBuildFonts(config);
-#if _WIN32
+#ifdef _WIN32
 		dstr_free(&config_buf);
 #endif
 	return true;

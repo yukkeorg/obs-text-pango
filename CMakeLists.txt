@@ -46,6 +46,11 @@ include_directories(
 	${PANGOCAIRO_INCLUDE_DIRS}
 	${PANGOFT2_INCLUDE_DIRS}
 	${FREETYPE_INCLUDE_DIRS})
+if(APPLE)
+	FIND_PACKAGE(PkgConfig)
+	PKG_CHECK_MODULES(GLIB glib-2.0 REQUIRED)
+	include_directories(${GLIB_INCLUDE_DIRS})
+endif()
 
 link_directories(
 	${PANGO_LIBRARY_DIRS}
