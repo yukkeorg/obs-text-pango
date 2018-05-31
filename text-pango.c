@@ -29,7 +29,7 @@ OBS_MODULE_USE_DEFAULT_LOCALE("text-pango", "en-US")
 
 
 #define FILE_CHECK_TIMEOUT_SEC 1.0
-#define MAX_TEXTURE_SIZE 4096
+#define MAX_TEXTURE_SIZE 16384
 #ifndef max
 #define max(a,b) (a > b ? a : b)
 #endif
@@ -80,6 +80,7 @@ void render_text(struct pango_source *src)
 
 	/* Get text dimensions and create a context to render to */
 	int text_height = 0; int text_width = 0;
+	int line_num = 1;
 	PangoRectangle log_rect; PangoRectangle ink_rect;
 	PangoLayoutIter *sizing_iter = pango_layout_get_iter(layout);
 	do {
@@ -88,10 +89,12 @@ void render_text(struct pango_source *src)
 		int new_w = max(text_width, PANGO_PIXELS_FLOOR(max(0, ink_rect.x) + ink_rect.width));
 		if(new_h + outline_width + max(outline_width, drop_shadow_offset) > MAX_TEXTURE_SIZE
 		|| new_w + outline_width + max(outline_width, drop_shadow_offset) > MAX_TEXTURE_SIZE)  {
+			blog(LOG_WARNING, "[pango]: Text truncated at line: %i", line_num);
 			break; // If this line would put us over max texture.
 		}
 		text_height = new_h;
 		text_width = new_w;
+		line_num += 1;
 	} while (pango_layout_iter_next_line(sizing_iter));
 	pango_layout_iter_free(sizing_iter);
 	text_height += outline_width + max(outline_width, drop_shadow_offset);
