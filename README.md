@@ -57,3 +57,15 @@ please submit a PR with appropriate `NAMES` to find them on your platform.
 To integrate the plugin into the OBS Studio build put the source into
 the `plugins/text-pango` folder of OBS Studio source and add it to the
 `plugins/CMakeLists.txt`.
+
+Linux
+-----
+On Debian and its derivitaves you can install `libpango1.0-dev` for all the build time dependencies.
+
+Windows
+-----
+You will have to build the toolchain yourself, but it should be simplified if you have a posix shell environment such as cygwin and the visual studio build tools via https://github.com/kkartaltepe/pango-win32-build
+
+Mac
+-----
+Install pango via `brew` and you should be set.
