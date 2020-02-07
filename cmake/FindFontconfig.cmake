@@ -13,12 +13,19 @@
 # Distributed under the OSI-approved BSD License
 #
 
-if (NOT WIN32)
-    find_package(PkgConfig)
-    if (PKG_CONFIG_FOUND)
-        pkg_check_modules(_FONTCONFIG fontconfig)
-    endif (PKG_CONFIG_FOUND)
-endif (NOT WIN32)
+find_package(PkgConfig)
+pkg_check_modules(PC_FONTCONFIG fontconfig QUIET)
+if(PC_FONTCONFIG_FOUND)
+	find_package_handle_standard_args(FONTCONFIG DEFAULT_MSG
+		PC_FONTCONFIG_INCLUDE_DIRS PC_FONTCONFIG_LIBRARIES
+	)
+
+	mark_as_advanced(PC_FONTCONFIG_FOUND)
+	set(FONTCONFIG_INCLUDE_DIRS ${PC_FONTCONFIG_INCLUDE_DIRS})
+	set(FONTCONFIG_LIBRARIES ${PC_FONTCONFIG_LIBRARIES})
+	set(FONTCONFIG_LIBRARY_DIRS ${PC_FONTCONFIG_LIBRARY_DIRS})
+	return()
+endif()
 
 SET(_FONTCONFIG_ROOT_HINTS
     $ENV{FONTCONFIG}
