@@ -27,6 +27,7 @@ else()
 		../../libobs)
 	set(OBS_LIBRARIES
 		libobs)
+	set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/plugins/obs-text-pango/cmake/")
 endif()
 
 find_package(Pango REQUIRED)

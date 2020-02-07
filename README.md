@@ -55,7 +55,7 @@ If the include cmake find modules fail to find packages on your system
 please submit a PR with appropriate `NAMES` to find them on your platform.
 
 To integrate the plugin into the OBS Studio build put the source into
-the `plugins/text-pango` folder of OBS Studio source and add it to the
+the `plugins/obs-text-pango` folder of OBS Studio source and add it to the
 `plugins/CMakeLists.txt`.
 
 Linux
