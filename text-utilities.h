@@ -6,7 +6,8 @@
 #include <util/platform.h>
 #include <obs-module.h>
 #include <gmodule.h>
-
+#include <fontconfig/fontconfig.h>
+#include <fontconfig/fcfreetype.h>
 
 #define RGBA_CAIRO(c) \
 	 (c & 0xff) / 256.0, \
