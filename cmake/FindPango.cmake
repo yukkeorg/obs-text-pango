@@ -1,6 +1,18 @@
 find_package(PkgConfig)
 pkg_check_modules(PC_PANGO pango QUIET)
+if(PC_PANGO_FOUND)
+	find_package_handle_standard_args(PANGO DEFAULT_MSG
+		PC_PANGO_INCLUDE_DIRS PC_PANGO_LIBRARIES
+	)
 
+	mark_as_advanced(PC_PANGO_FOUND)
+	set(PANGO_INCLUDE_DIRS ${PC_PANGO_INCLUDE_DIRS})
+	set(PANGO_LIBRARIES ${PC_PANGO_LIBRARIES})
+	set(PANGO_LIBRARY_DIRS ${PC_PANGO_LIBRARY_DIRS})
+	return()
+endif()
+
+# Try manually if no pkg-config
 find_path(PANGO_INCLUDE_DIR
     NAMES
         pango/pango.h
@@ -18,7 +30,7 @@ find_library(PANGO_LIBRARY
     PATH_SUFFIXES
         pango
 )
-find_package(PkgConfig)
+
 pkg_check_modules(PC_GLIB REQUIRED glib-2.0)
 pkg_check_modules(PC_GOBJECT REQUIRED gobject-2.0)
 pkg_check_modules(PC_GMODULE REQUIRED gmodule-2.0)
