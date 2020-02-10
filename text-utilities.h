@@ -30,6 +30,7 @@ cairo_t *create_layout_context()
 static void set_font(struct pango_source *src, PangoLayout *layout) {
 	PangoFontDescription *desc = NULL;
 
+#if FC_VERSION < 21291
 	if (src->font_from_file && src->font_file && strcmp(src->font_file, "") != 0) {
 		if (FcConfigAppFontAddFile(NULL, src->font_file)) {
 			FcFontSet *font_set = FcFontSetCreate();
@@ -44,6 +45,7 @@ static void set_font(struct pango_source *src, PangoLayout *layout) {
 			blog(LOG_WARNING, "[pango] Failed to load font: %s", src->font_file);
 		}
 	}
+#endif
 
 	if (!desc) { // If we havnt loaded a font file, go ahead and load our font name choice.
 		desc = pango_font_description_new ();

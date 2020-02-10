@@ -275,6 +275,10 @@ static obs_properties_t *pango_source_get_properties(void *unused)
 
 	prop = obs_properties_add_bool(props, "font_from_file",
 		obs_module_text("Font.FromFile"));
+#if FC_VERSION < 21291
+	// Disable this if FC is too old.
+	obs_property_set_visible(prop, false);
+#endif
 	obs_property_set_modified_callback(prop,
 		pango_source_properties_font_from_file_changed);
 	obs_properties_add_path(props, "font_file",
