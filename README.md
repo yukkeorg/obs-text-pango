@@ -23,10 +23,6 @@ Current Features
   * Reload on changes
 * Opacity
 
-Unfixed Bugs
-------------
-* UTF-16 file support
-
 Considering Features
 ----------------
 * Custom text width
@@ -60,7 +56,7 @@ the `plugins/obs-text-pango` folder of OBS Studio source and add it to the
 
 Linux
 -----
-On Debian and its derivitaves you can install `libpango1.0-dev` for all the build time dependencies.
+On Debian and its derivitaves you can install `libpango1.0-dev` for all the build time dependencies. Everywhere else its typically just `pango`.
 
 Windows
 -----
@@ -68,4 +64,4 @@ You will have to build the toolchain yourself, but it should be simplified if yo
 
 Mac
 -----
-Install pango via `brew` and you should be set.
+Install pango via `brew install pango` and you should be set.
