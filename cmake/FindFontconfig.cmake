@@ -16,7 +16,7 @@
 find_package(PkgConfig)
 pkg_check_modules(PC_FONTCONFIG fontconfig QUIET)
 if(PC_FONTCONFIG_FOUND)
-	find_package_handle_standard_args(FONTCONFIG DEFAULT_MSG
+	find_package_handle_standard_args(Fontconfig DEFAULT_MSG
 		PC_FONTCONFIG_INCLUDE_DIRS PC_FONTCONFIG_LIBRARIES
 	)
 
@@ -64,9 +64,9 @@ FIND_LIBRARY(FONTCONFIG_LIBRARY
     PATH_SUFFIXES
         "lib"
         "local/lib"
-) 
+)
 
-SET(FONTCONFIG_LIBRARIES 
+SET(FONTCONFIG_LIBRARIES
     ${FONTCONFIG_LIBRARY}
 )
 
@@ -75,7 +75,7 @@ SET(FONTCONFIG_INCLUDE_DIRS
 )
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(FONTCONFIG
+find_package_handle_standard_args(Fontconfig
     REQUIRED_VARS FONTCONFIG_LIBRARIES FONTCONFIG_INCLUDE_DIRS
     FAIL_MESSAGE "Could NOT find FONTCONFIG, try to set the path to FONTCONFIG root folder in the system variable FONTCONFIG"
 )

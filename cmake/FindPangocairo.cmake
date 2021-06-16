@@ -18,13 +18,8 @@ FIND_LIBRARY(PANGOCAIRO_LIBRARY
         pango
 )
 
-# include(CMakeFindDependencyMacro)
-# find_dependency(cairo)
-# list(APPEND PANGOCAIRO_INCLUDE_DIR ${CAIRO_INCLUDE_DIRS})
-# list(APPEND PANGOCAIRO_LIBRARY ${CAIRO_LIBRARIES})
-
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(PANGOCAIRO DEFAULT_MSG 
+find_package_handle_standard_args(Pangocairo DEFAULT_MSG
     PANGOCAIRO_LIBRARY PANGOCAIRO_INCLUDE_DIR
 )
 
