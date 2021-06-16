@@ -1,15 +1,15 @@
 find_package(PkgConfig)
 pkg_check_modules(PC_PANGO pango QUIET)
 if(PC_PANGO_FOUND)
-	find_package_handle_standard_args(PANGO DEFAULT_MSG
-		PC_PANGO_INCLUDE_DIRS PC_PANGO_LIBRARIES
-	)
+    find_package_handle_standard_args(Pango DEFAULT_MSG
+        PC_PANGO_INCLUDE_DIRS PC_PANGO_LIBRARIES
+    )
 
-	mark_as_advanced(PC_PANGO_FOUND)
-	set(PANGO_INCLUDE_DIRS ${PC_PANGO_INCLUDE_DIRS})
-	set(PANGO_LIBRARIES ${PC_PANGO_LIBRARIES})
-	set(PANGO_LIBRARY_DIRS ${PC_PANGO_LIBRARY_DIRS})
-	return()
+    mark_as_advanced(PC_PANGO_FOUND)
+    set(PANGO_INCLUDE_DIRS ${PC_PANGO_INCLUDE_DIRS})
+    set(PANGO_LIBRARIES ${PC_PANGO_LIBRARIES})
+    set(PANGO_LIBRARY_DIRS ${PC_PANGO_LIBRARY_DIRS})
+    return()
 endif()
 
 # Try manually if no pkg-config
@@ -42,7 +42,7 @@ if(PANGO_LIBRARY) # avoid false positive finds
 endif()
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(PANGO DEFAULT_MSG 
+find_package_handle_standard_args(Pango DEFAULT_MSG
     PANGO_INCLUDE_DIR PANGO_LIBRARY
 )
 

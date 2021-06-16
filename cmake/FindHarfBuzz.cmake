@@ -63,7 +63,7 @@ else ()
 endif ()
 
 include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(HarfBuzz DEFAULT_MSG HARFBUZZ_INCLUDE_DIRS
+find_package_handle_standard_args(HarfBuzz DEFAULT_MSG HARFBUZZ_INCLUDE_DIRS
     HARFBUZZ_LIBRARIES ${_HARFBUZZ_EXTRA_REQUIRED_VAR})
 
 mark_as_advanced(

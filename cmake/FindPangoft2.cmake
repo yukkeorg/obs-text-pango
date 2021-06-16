@@ -19,7 +19,7 @@ FIND_LIBRARY(PANGOFT2_LIBRARY
 )
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(PANGOFT2 DEFAULT_MSG 
+find_package_handle_standard_args(Pangoft2 DEFAULT_MSG
     PANGOFT2_LIBRARY PANGOFT2_INCLUDE_DIR
 )
 

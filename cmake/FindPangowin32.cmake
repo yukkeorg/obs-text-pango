@@ -24,7 +24,7 @@ find_library(PANGOWIN32_LIBRARY
 list(APPEND PANGOWIN32_LIBRARY)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(PANGOWIN32 DEFAULT_MSG 
+find_package_handle_standard_args(Pangowin32 DEFAULT_MSG
     PANGOWIN32_LIBRARY PANGOWIN32_INCLUDE_DIR
 )
 

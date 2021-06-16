@@ -1,6 +1,7 @@
 #pragma once
 
 #include <obs-module.h>
+#include <obs-scene.h>
 
 enum {
 	ALIGN_LEFT = 0,

@@ -13,13 +13,14 @@ if(NOT OBS_OUTPUT_DIR)
 	find_path(OBS_INCLUDE_DIRS
 		obs-module.h
 		HINTS $ENV{OBS_DIR} ${OBS_DIR}
-		PATH_SUFFIXES 
+		PATH_SUFFIXES
 			libobs)
 	find_library(OBS_LIBRARIES
 		NAMES obs libobs
 		HINTS $ENV{OBS_DIR} ${OBS_DIR}
 		PATH_SUFFIXES
-			build_rel/libobs
+			install/lib
+			install/bin/64bit
 			libobs)
 # Build as submodule of obs-studio
 else()
@@ -108,18 +109,21 @@ if(STANDALONE_PLUGIN)
 			DESTINATION "Library/Application Support/obs-studio/plugins/libtext-pango/data")
 		# for packaging, copy all dependencies, change dependency links
 		# run pkgbuild --identifier user.obsproject.kurufu.text-pango --root ./obs-text-pango-install/ text-pango-mac.pkg
-	else() # Not apple so normal layout
+	elseif(UNIX AND NOT APPLE)
 		install(TARGETS text-pango 
+			LIBRARY DESTINATION "bin/")
+		install(DIRECTORY data/common/
+			DESTINATION data/)
+	else() # Not apple so normal layout
+		install(TARGETS text-pango
 			LIBRARY DESTINATION "obs-plugins/${_bit_suffix}/")
 		install(DIRECTORY data/common/
 			DESTINATION data/obs-plugins/text-pango)
 		# Platform specific data, like fontconfig in win32
-		if(WIN32)
-			install(FILES $<TARGET_PDB_FILE:${PROJECT_NAME}>
-				DESTINATION "obs-plugins/${_bit_suffix}/" OPTIONAL)
-			install(DIRECTORY data/win32/
-				DESTINATION data/obs-plugins/text-pango)
-		endif()
+		install(FILES $<TARGET_PDB_FILE:${PROJECT_NAME}>
+			DESTINATION "obs-plugins/${_bit_suffix}/" OPTIONAL)
+		install(DIRECTORY data/win32/
+			DESTINATION data/obs-plugins/text-pango)
 	endif()
 else()
 	install_obs_plugin_with_data(text-pango data/common)
