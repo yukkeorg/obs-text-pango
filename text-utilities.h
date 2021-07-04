@@ -320,8 +320,8 @@ static bool read_whole_file(char **dst_buf, size_t *size, uint8_t *utf_encoding,
 
 	if (len > 0) {
 		fseek(file, header_offset, SEEK_SET);
-		len = fread(tmp_buf, 1, len-header_offset, file);
-		if (len == 0) {
+		size_t len_read = fread(tmp_buf, 1, len-header_offset, file);
+		if (len_read == 0) {
 			bfree(tmp_buf);
 			fclose(file);
 			return false;
