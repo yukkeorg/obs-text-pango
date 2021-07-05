@@ -243,7 +243,7 @@ static void pango_source_get_defaults(obs_data_t *settings)
 
 	font = obs_data_create();
 	obs_data_set_default_string(font, "face", DEFAULT_FACE);
-	obs_data_set_default_int(font, "size", 32);
+	obs_data_set_default_int(font, "size", 256);
 	obs_data_set_default_obj(settings, "font", font);
 	obs_data_release(font);
 
@@ -307,9 +307,9 @@ static obs_properties_t *pango_source_get_properties(void *unused)
 		obs_module_text("Gradient"));
 	obs_property_set_modified_callback(prop,
 		pango_source_properties_gradient_changed);
-	obs_properties_add_color(props, "color1",
+	obs_properties_add_color_alpha(props, "color1",
 		obs_module_text("Gradient.Color"));
-	obs_properties_add_color(props, "color2",
+	obs_properties_add_color_alpha(props, "color2",
 		obs_module_text("Gradient.Color2"));
 
 	prop = obs_properties_add_list(props, "align",
