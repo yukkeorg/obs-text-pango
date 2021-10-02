@@ -4,6 +4,8 @@ Text Source using Pango for OBS Studio
 This plugin provides a text source for OBS Studio. The text is layed out
 and rendered using Pango.
 
+This is enabled [Pango Text Attribute Markup](https://docs.gtk.org/Pango/pango_markup.html).
+
 Current Features
 ----------------
 
