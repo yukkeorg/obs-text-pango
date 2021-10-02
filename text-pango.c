@@ -76,7 +76,7 @@ void render_text(struct pango_source *src)
 	set_halignment(src, layout);
 	set_lang(src, layout);
 
-	pango_layout_set_text(layout, src->text, -1);
+	pango_layout_set_markup(layout, src->text, -1);
 
 	/* Get text dimensions and create a context to render to */
 	int text_height = 0; int text_width = 0;
