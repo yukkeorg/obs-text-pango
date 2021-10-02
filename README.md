@@ -6,6 +6,8 @@ and rendered using Pango.
 
 This is enabled [Pango Text Attribute Markup](https://docs.gtk.org/Pango/pango_markup.html).
 
+![image](https://github.com/yukkeorg/obs-text-pango/raw/master/docs/image.png)
+
 Current Features
 ----------------
 
