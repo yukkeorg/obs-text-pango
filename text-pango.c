@@ -246,6 +246,7 @@ static void pango_source_get_defaults(obs_data_t *settings)
 	obs_data_set_default_obj(settings, "font", font);
 	obs_data_release(font);
 
+	obs_data_set_default_int(settings, "line_spacing", 0);
 
 	obs_data_set_default_bool(settings, "gradient", false);
 	obs_data_set_default_int(settings, "color1", 0xFFFFFFFF);
@@ -298,6 +299,9 @@ static obs_properties_t *pango_source_get_properties(void *unused)
 	obs_properties_add_path(props, "text_file",
 		obs_module_text("TextFile"), OBS_PATH_FILE,
 		NULL, NULL);
+
+	obs_properties_add_int(props, "line_spacing",
+		obs_module_text("LineSpacing"), -1000, 1000, 1);
 
 	obs_properties_add_bool(props, "vertical",
 		obs_module_text("Vertical"));
@@ -471,6 +475,8 @@ static void pango_source_update(void *data, obs_data_t *settings)
 
 	src->vertical = obs_data_get_bool(settings, "vertical");
 	src->align = (int)obs_data_get_int(settings, "align");
+
+	src->line_spacing = (int32_t)obs_data_get_int(settings, "line_spacing");
 
 	if(src->encoding) {
 		bfree(src->encoding);
