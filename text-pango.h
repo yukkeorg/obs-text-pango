@@ -30,7 +30,7 @@ struct pango_source {
 	int align;
 	int v_align;
 
-	int32_t line_spacing;
+	double line_spacing;
 
 	bool gradient;
 	uint32_t color[2];

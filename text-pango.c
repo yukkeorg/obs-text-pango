@@ -77,6 +77,7 @@ void render_text(struct pango_source *src)
 	set_lang(src, layout);
 
 	pango_layout_set_markup(layout, src->text, -1);
+	pango_layout_set_line_spacing(layout, (float)src->line_spacing);
 
 	/* Get text dimensions and create a context to render to */
 	int text_height = 0;
@@ -88,7 +89,8 @@ void render_text(struct pango_source *src)
 	PangoLayoutIter *sizing_iter = pango_layout_get_iter(layout);
 	do {
 		pango_layout_iter_get_line_extents(sizing_iter, &ink_rect, &log_rect);
-		int new_h = text_height + PANGO_PIXELS_FLOOR(log_rect.height); // May be too conservative, but looks good in arial
+		int baseline = pango_layout_iter_get_baseline(sizing_iter);
+		int new_h = PANGO_PIXELS_CEIL(baseline);
 		int new_w = max(text_width, PANGO_PIXELS_FLOOR(max(0, ink_rect.x) + ink_rect.width));
 		if(new_h + outline_width + max(outline_width, drop_shadow_offset) > MAX_TEXTURE_SIZE
 		|| new_w + outline_width + max(outline_width, drop_shadow_offset) > MAX_TEXTURE_SIZE)  {
@@ -132,6 +134,7 @@ void render_text(struct pango_source *src)
 	int xoffset = outline_width;
 	int yoffset = outline_width;
 	PangoLayoutIter *iter = pango_layout_get_iter(layout);
+
 	do {
 		PangoLayoutLine *line;
 		PangoRectangle rect;
@@ -149,6 +152,7 @@ void render_text(struct pango_source *src)
 			break; // If this line would put us over max texture.
 
 		cairo_push_group(render_context); // Render lines independently via groups.
+
 		/* Draw the drop shadow */
 		if (drop_shadow_offset > 0) {
 			cairo_move_to(render_context,
@@ -195,6 +199,7 @@ void render_text(struct pango_source *src)
 		cairo_pop_group_to_source(render_context); // Use isolated line as source for final texture
 		cairo_paint(render_context);
 	} while (pango_layout_iter_next_line(iter));
+
 	pango_layout_iter_free(iter);
 
 	obs_enter_graphics();
@@ -246,7 +251,7 @@ static void pango_source_get_defaults(obs_data_t *settings)
 	obs_data_set_default_obj(settings, "font", font);
 	obs_data_release(font);
 
-	obs_data_set_default_int(settings, "line_spacing", 0);
+	obs_data_set_default_double(settings, "line_spacing", 1.0);
 
 	obs_data_set_default_bool(settings, "gradient", false);
 	obs_data_set_default_int(settings, "color1", 0xFFFFFFFF);
@@ -300,8 +305,8 @@ static obs_properties_t *pango_source_get_properties(void *unused)
 		obs_module_text("TextFile"), OBS_PATH_FILE,
 		NULL, NULL);
 
-	obs_properties_add_int(props, "line_spacing",
-		obs_module_text("LineSpacing"), -1000, 1000, 1);
+	obs_properties_add_float(props, "line_spacing",
+		obs_module_text("LineSpacing"), 0.0, 5.0, 0.01);
 
 	obs_properties_add_bool(props, "vertical",
 		obs_module_text("Vertical"));
@@ -466,17 +471,17 @@ static void pango_source_update(void *data, obs_data_t *settings)
 		src->font_size = (uint16_t)obs_data_get_int(settings, "font_file_size");
 		obs_data_set_int(font, "size", src->font_size);
 	} else {
-		src->font_size   = (uint16_t)obs_data_get_int(font, "size");
+		src->font_size = (uint16_t)obs_data_get_int(font, "size");
 		obs_data_set_int(settings, "font_file_size", src->font_size);
 	}
-	src->font_flags  = (uint32_t)obs_data_get_int(font, "flags");
+	src->font_flags = (uint32_t)obs_data_get_int(font, "flags");
 	obs_data_release(font);
 
 
 	src->vertical = obs_data_get_bool(settings, "vertical");
 	src->align = (int)obs_data_get_int(settings, "align");
 
-	src->line_spacing = (int32_t)obs_data_get_int(settings, "line_spacing");
+	src->line_spacing = obs_data_get_double(settings, "line_spacing");
 
 	if(src->encoding) {
 		bfree(src->encoding);
