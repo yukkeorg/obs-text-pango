@@ -77,15 +77,20 @@ void render_text(struct pango_source *src)
 	set_lang(src, layout);
 
 	pango_layout_set_markup(layout, src->text, -1);
+	pango_layout_set_line_spacing(layout, (float)src->line_spacing);
 
 	/* Get text dimensions and create a context to render to */
-	int text_height = 0; int text_width = 0;
+	int text_height = 0;
+	int text_width = 0;
 	int line_num = 1;
-	PangoRectangle log_rect; PangoRectangle ink_rect;
+	PangoRectangle log_rect;
+	PangoRectangle ink_rect;
+
 	PangoLayoutIter *sizing_iter = pango_layout_get_iter(layout);
 	do {
 		pango_layout_iter_get_line_extents(sizing_iter, &ink_rect, &log_rect);
-		int new_h = text_height+PANGO_PIXELS_FLOOR(log_rect.height); // May be too conservative, but looks good in arial
+		int baseline = pango_layout_iter_get_baseline(sizing_iter);
+		int new_h = PANGO_PIXELS_CEIL(baseline);
 		int new_w = max(text_width, PANGO_PIXELS_FLOOR(max(0, ink_rect.x) + ink_rect.width));
 		if(new_h + outline_width + max(outline_width, drop_shadow_offset) > MAX_TEXTURE_SIZE
 		|| new_w + outline_width + max(outline_width, drop_shadow_offset) > MAX_TEXTURE_SIZE)  {
@@ -129,11 +134,11 @@ void render_text(struct pango_source *src)
 	int xoffset = outline_width;
 	int yoffset = outline_width;
 	PangoLayoutIter *iter = pango_layout_get_iter(layout);
+
 	do {
 		PangoLayoutLine *line;
 		PangoRectangle rect;
 		PangoRectangle paint_rect;
-		int y1, y2;
 		cairo_pattern_t *pattern;
 
 		line = pango_layout_iter_get_line_readonly(iter);
@@ -147,6 +152,7 @@ void render_text(struct pango_source *src)
 			break; // If this line would put us over max texture.
 
 		cairo_push_group(render_context); // Render lines independently via groups.
+
 		/* Draw the drop shadow */
 		if (drop_shadow_offset > 0) {
 			cairo_move_to(render_context,
@@ -157,8 +163,7 @@ void render_text(struct pango_source *src)
 			pango_cairo_show_layout_line(render_context, line);
 			cairo_fill(render_context);
 			cairo_set_operator(render_context, CAIRO_OPERATOR_IN);
-			cairo_set_source_rgba(render_context,
-					RGBA_CAIRO(src->drop_shadow_color));
+			cairo_set_source_rgba(render_context, RGBA_CAIRO(src->drop_shadow_color));
 			cairo_paint(render_context);
 		}
 
@@ -169,22 +174,20 @@ void render_text(struct pango_source *src)
 			pango_cairo_layout_line_path(render_context, line);
 			cairo_set_line_join(render_context, CAIRO_LINE_JOIN_ROUND);
 			cairo_set_line_width(render_context, outline_width * 2);
-			cairo_set_source_rgba(render_context,
-					RGBA_CAIRO(src->outline_color));
+			cairo_set_source_rgba(render_context, RGBA_CAIRO(src->outline_color));
 			cairo_stroke(render_context);
 		}
 
 		/* Handle Gradienting source by line */
+		int y1 = 0, y2 = 0;
 		cairo_set_operator(render_context, CAIRO_OPERATOR_SOURCE);
 		pango_layout_iter_get_line_yrange(iter, &y1, &y2);
 		pattern = cairo_pattern_create_linear(
 				0, PANGO_PIXELS_FLOOR(paint_rect.y) + yoffset,
-				0, PANGO_PIXELS_FLOOR(paint_rect.y+paint_rect.height) + yoffset);
+				0, PANGO_PIXELS_FLOOR(paint_rect.y + paint_rect.height) + yoffset);
 		cairo_pattern_set_extend(pattern, CAIRO_EXTEND_PAD);
-		cairo_pattern_add_color_stop_rgba(pattern, 0.0,
-				RGBA_CAIRO(src->color[0]));
-		cairo_pattern_add_color_stop_rgba(pattern, 1.0,
-				RGBA_CAIRO(src->color[1]));
+		cairo_pattern_add_color_stop_rgba(pattern, 0.0, RGBA_CAIRO(src->color[0]));
+		cairo_pattern_add_color_stop_rgba(pattern, 1.0, RGBA_CAIRO(src->color[1]));
 
 		cairo_set_source(render_context, pattern);
 		cairo_fill(render_context);
@@ -196,6 +199,7 @@ void render_text(struct pango_source *src)
 		cairo_pop_group_to_source(render_context); // Use isolated line as source for final texture
 		cairo_paint(render_context);
 	} while (pango_layout_iter_next_line(iter));
+
 	pango_layout_iter_free(iter);
 
 	obs_enter_graphics();
@@ -247,6 +251,7 @@ static void pango_source_get_defaults(obs_data_t *settings)
 	obs_data_set_default_obj(settings, "font", font);
 	obs_data_release(font);
 
+	obs_data_set_default_double(settings, "line_spacing", 1.0);
 
 	obs_data_set_default_bool(settings, "gradient", false);
 	obs_data_set_default_int(settings, "color1", 0xFFFFFFFF);
@@ -299,6 +304,9 @@ static obs_properties_t *pango_source_get_properties(void *unused)
 	obs_properties_add_path(props, "text_file",
 		obs_module_text("TextFile"), OBS_PATH_FILE,
 		NULL, NULL);
+
+	obs_properties_add_float(props, "line_spacing",
+		obs_module_text("LineSpacing"), 0.0, 5.0, 0.01);
 
 	obs_properties_add_bool(props, "vertical",
 		obs_module_text("Vertical"));
@@ -414,10 +422,8 @@ static void pango_source_render(void *data, gs_effect_t *effect)
 	gs_blend_state_push();
 	gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
 
-	gs_effect_set_texture(gs_effect_get_param_by_name(effect, "image"),
-			src->tex);
-	gs_draw_sprite(src->tex, 0,
-			src->width, src->height);
+	gs_effect_set_texture(gs_effect_get_param_by_name(effect, "image"), src->tex);
+	gs_draw_sprite(src->tex, 0, src->width, src->height);
 
 	gs_blend_state_pop();
 	gs_enable_framebuffer_srgb(prev);
@@ -448,7 +454,7 @@ static void pango_source_update(void *data, obs_data_t *settings)
 	struct pango_source *src = data;
 	obs_data_t *font;
 	char *font_file =  NULL;
-	
+
 	if (src->text) {
 		bfree(src->text);
 		src->text = NULL;
@@ -460,20 +466,22 @@ static void pango_source_update(void *data, obs_data_t *settings)
 	font = obs_data_get_obj(settings, "font");
 	if (src->font_name)
 		bfree(src->font_name);
-	src->font_name  = bstrdup(obs_data_get_string(font, "face"));
+	src->font_name = bstrdup(obs_data_get_string(font, "face"));
 	if(src->font_from_file) { // Keep sizes synced.
 		src->font_size = (uint16_t)obs_data_get_int(settings, "font_file_size");
 		obs_data_set_int(font, "size", src->font_size);
 	} else {
-		src->font_size   = (uint16_t)obs_data_get_int(font, "size");
+		src->font_size = (uint16_t)obs_data_get_int(font, "size");
 		obs_data_set_int(settings, "font_file_size", src->font_size);
 	}
-	src->font_flags  = (uint32_t)obs_data_get_int(font, "flags");
+	src->font_flags = (uint32_t)obs_data_get_int(font, "flags");
 	obs_data_release(font);
 
 
 	src->vertical = obs_data_get_bool(settings, "vertical");
 	src->align = (int)obs_data_get_int(settings, "align");
+
+	src->line_spacing = obs_data_get_double(settings, "line_spacing");
 
 	if(src->encoding) {
 		bfree(src->encoding);
