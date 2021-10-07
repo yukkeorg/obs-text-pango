@@ -89,15 +89,14 @@ void render_text(struct pango_source *src)
 	PangoLayoutIter *sizing_iter = pango_layout_get_iter(layout);
 	do {
 		pango_layout_iter_get_line_extents(sizing_iter, &ink_rect, &log_rect);
-		int baseline = pango_layout_iter_get_baseline(sizing_iter);
-		int new_h = PANGO_PIXELS_CEIL(baseline);
+		int new_h = (PANGO_PIXELS_FLOOR(log_rect.y) - text_height) + PANGO_PIXELS_FLOOR(log_rect.height);
 		int new_w = max(text_width, PANGO_PIXELS_FLOOR(max(0, ink_rect.x) + ink_rect.width));
 		if(new_h + outline_width + max(outline_width, drop_shadow_offset) > MAX_TEXTURE_SIZE
 		|| new_w + outline_width + max(outline_width, drop_shadow_offset) > MAX_TEXTURE_SIZE)  {
 			blog(LOG_WARNING, "[pango]: Text truncated at line: %i", line_num);
 			break; // If this line would put us over max texture.
 		}
-		text_height = new_h;
+		text_height += new_h;
 		text_width = new_w;
 		line_num += 1;
 	} while (pango_layout_iter_next_line(sizing_iter));
@@ -305,7 +304,7 @@ static obs_properties_t *pango_source_get_properties(void *unused)
 		obs_module_text("TextFile"), OBS_PATH_FILE,
 		NULL, NULL);
 
-	obs_properties_add_float(props, "line_spacing",
+	obs_properties_add_float_slider(props, "line_spacing",
 		obs_module_text("LineSpacing"), 0.0, 5.0, 0.01);
 
 	obs_properties_add_bool(props, "vertical",
