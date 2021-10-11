@@ -24,7 +24,6 @@ Current Features
   * Chat log mode (Last X lines from file)
   * Reload on changes
 * Opacity
-
 * [Pango Text Attribute Markup](https://docs.gtk.org/Pango/pango_markup.html)
 * Line spacing
 
