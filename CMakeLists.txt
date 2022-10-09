@@ -12,7 +12,7 @@ if(NOT OBS_OUTPUT_DIR)
 
 	find_path(OBS_INCLUDE_DIRS
 		obs-module.h
-		HINTS $ENV{OBS_DIR} ${OBS_DIR}
+		HINTS $ENV{OBS_DIR} ${OBS_DIR} /usr/include/obs
 		PATH_SUFFIXES
 			libobs)
 	find_library(OBS_LIBRARIES
